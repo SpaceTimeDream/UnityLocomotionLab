@@ -1,6 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
+using Portfolio.Editor.Shared;
 
 [CustomEditor(typeof(MonoBehaviour), true)]
 public class EditorTemplate : Editor
@@ -18,10 +19,6 @@ public class EditorTemplate : Editor
 
     protected Editor _baseEditor;
 
-    //------------------------------- GUI Styles -------------------------------//
-
-    //protected CustomEditorStyles _styles;
-
     //------------------------------- State -------------------------------//
 
     protected Dictionary<string, bool> _foldouts = new Dictionary<string, bool>();
@@ -38,7 +35,6 @@ public class EditorTemplate : Editor
 
         CacheSerializedProperties();
         InitializeEditors();
-        InitializeStyles();
         InitializeFoldouts();
         SubscribeEvents();
         _isInitialized = true;
@@ -87,13 +83,6 @@ public class EditorTemplate : Editor
     {
         if (_baseEditor != null)
             DestroyImmediate(_baseEditor);
-    }
-
-    //------------------------------- Styles -------------------------------//
-
-    protected virtual void InitializeStyles()
-    {
-        //_styles ??= new CustomEditorStyles();
     }
 
     //------------------------------- Foldouts -------------------------------//
@@ -169,8 +158,8 @@ public class EditorTemplate : Editor
         _foldouts[key] = EditorGUILayout.Foldout(
             _foldouts[key],
             key,
-            true
-            //_styles.HeaderStyle2
+            true,
+            CustomEditorStyles.FoldoutStyle
         );
 
         if (!_foldouts[key])
