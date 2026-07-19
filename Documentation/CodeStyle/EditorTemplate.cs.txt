@@ -1,0 +1,60 @@
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEngine;
+
+namespace Portfolio.CodeStyle.Editor
+{
+    [CustomEditor(typeof(Template))]
+    public class EditorTemplate : UnityEditor.Editor
+    {
+        // Fields
+        private SerializedProperty _exampleEnabledProperty;
+        private bool _settingsFoldout = true;
+
+        // Unity Methods
+        private void OnEnable()
+        {
+            Initialize();
+        }
+
+        private void OnDisable()
+        {
+            Cleanup();
+        }
+
+        public override void OnInspectorGUI()
+        {
+            serializedObject.Update();
+            DrawSettings();
+            serializedObject.ApplyModifiedProperties();
+        }
+
+        // Private Methods
+        private void Initialize()
+        {
+            InitializeProperties();
+        }
+
+        private void InitializeProperties()
+        {
+            _exampleEnabledProperty = serializedObject.FindProperty("_exampleEnabled");
+        }
+
+        private void DrawSettings()
+        {
+            _settingsFoldout = EditorGUILayout.Foldout(_settingsFoldout, "Settings", true);
+
+            if (!_settingsFoldout)
+            {
+                return;
+            }
+
+            EditorGUILayout.PropertyField(_exampleEnabledProperty);
+        }
+
+        private void Cleanup()
+        {
+        }
+    }
+}
+#endif

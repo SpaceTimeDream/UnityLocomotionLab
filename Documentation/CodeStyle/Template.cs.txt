@@ -1,0 +1,77 @@
+using UnityEngine;
+
+namespace Portfolio.CodeStyle
+{
+    public class Template : MonoBehaviour
+    {
+        // Fields
+        [SerializeField] private bool _exampleEnabled = true;
+
+        private Transform _cachedTransform;
+
+        // Properties
+        public bool ExampleEnabled => _exampleEnabled;
+
+        // Unity Methods
+        private void Start()
+        {
+            Initialize();
+        }
+
+        private void Update()
+        {
+            UpdateRuntime();
+        }
+
+        private void OnDestroy()
+        {
+            CleanupEvents();
+        }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            _exampleEnabled = true;
+        }
+#endif
+
+        // Public Methods
+        public void SetExampleEnabled(bool exampleEnabled)
+        {
+            _exampleEnabled = exampleEnabled;
+        }
+
+        // Private Methods
+        private void Initialize()
+        {
+            InitializeComponents();
+            InitializeModules();
+            InitializeEvents();
+        }
+
+        private void InitializeComponents()
+        {
+            _cachedTransform = transform;
+        }
+
+        private void InitializeModules()
+        {
+        }
+
+        private void InitializeEvents()
+        {
+        }
+
+        private void UpdateRuntime()
+        {
+            if (!_exampleEnabled)
+            {
+                return;
+            }
+        }
+
+        private void CleanupEvents()
+        {
+        }
+    }
+}
