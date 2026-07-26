@@ -22,23 +22,23 @@ namespace Portfolio.Locomotion.Rigidbody
                 return;
             }
 
-            Vector2 velocity = body.velocity;
+            Vector2 velocity = body.linearVelocity;
 
             if (!state.ControlEnabled)
             {
-                body.velocity = ApplyHorizontalSpeed(velocity, 0f, state.Grounded ? _groundDeceleration : _airDeceleration);
+                body.linearVelocity = ApplyHorizontalSpeed(velocity, 0f, state.Grounded ? _groundDeceleration : _airDeceleration);
                 return;
             }
 
             if (state.OnSteepSlope)
             {
-                body.velocity = ApplySteepSlope(velocity, state, surfaceProbe, movementInput);
+                body.linearVelocity = ApplySteepSlope(velocity, state, surfaceProbe, movementInput);
                 return;
             }
 
             if (state.Grounded && state.OnWalkableSlope)
             {
-                body.velocity = ApplySlopeMovement(velocity, state, surfaceProbe, movementInput);
+                body.linearVelocity = ApplySlopeMovement(velocity, state, surfaceProbe, movementInput);
                 return;
             }
 
@@ -46,7 +46,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 ? (state.Grounded ? _groundAcceleration : _airAcceleration)
                 : (state.Grounded ? _groundDeceleration : _airDeceleration);
             float targetSpeed = movementInput * _maximumGroundSpeed;
-            body.velocity = ApplyHorizontalSpeed(velocity, targetSpeed, acceleration);
+            body.linearVelocity = ApplyHorizontalSpeed(velocity, targetSpeed, acceleration);
         }
 
         public void Validate()

@@ -223,7 +223,7 @@ namespace Portfolio.Locomotion.Spline.Path
                 return;
             }
 
-            Spline spline = _spriteShapeController.spline;
+            UnityEngine.U2D.Spline spline = _spriteShapeController.spline;
             for (int segment = 0; segment < spline.GetPointCount() - 1; segment++)
             {
                 for (int step = 0; step <= _samplesPerSegment; step++)
@@ -253,7 +253,7 @@ namespace Portfolio.Locomotion.Spline.Path
                 return 0;
             }
 
-            Spline spline = _spriteShapeController.spline;
+            UnityEngine.U2D.Spline spline = _spriteShapeController.spline;
 
             unchecked
             {
@@ -272,7 +272,7 @@ namespace Portfolio.Locomotion.Spline.Path
             }
         }
 
-        private Vector2 EvaluateBezier(Spline spline, int segment, float t)
+        private Vector2 EvaluateBezier(UnityEngine.U2D.Spline spline, int segment, float t)
         {
             Vector3 p0 = spline.GetPosition(segment);
             Vector3 p1 = p0 + spline.GetRightTangent(segment);
@@ -283,7 +283,7 @@ namespace Portfolio.Locomotion.Spline.Path
             return transform.TransformPoint(local);
         }
 
-        private Vector2 EvaluateBezierTangent(Spline spline, int segment, float t)
+        private Vector2 EvaluateBezierTangent(UnityEngine.U2D.Spline spline, int segment, float t)
         {
             Vector3 p0 = spline.GetPosition(segment);
             Vector3 p1 = p0 + spline.GetRightTangent(segment);

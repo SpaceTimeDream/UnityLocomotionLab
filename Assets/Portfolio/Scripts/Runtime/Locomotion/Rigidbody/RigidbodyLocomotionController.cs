@@ -142,22 +142,22 @@ namespace Portfolio.Locomotion.Rigidbody
             _movement.ApplyMovement(_body, _state, _surfaceProbe, _movementInput, _externalForces.IsHorizontalProtected);
             _jump.ApplyJump(_body, _state);
             ApplyGravity();
-            _state.SetVerticalMotion(_body.velocity.y);
+            _state.SetVerticalMotion(_body.linearVelocity.y);
         }
 
         private void ApplyGravity()
         {
-            float multiplier = _body.velocity.y > 0f ? _jumpAscentGravityMultiplier : _fallGravityMultiplier;
+            float multiplier = _body.linearVelocity.y > 0f ? _jumpAscentGravityMultiplier : _fallGravityMultiplier;
             _body.gravityScale = _gravityScale * multiplier;
 
-            if (_body.velocity.y >= -_maximumFallSpeed)
+            if (_body.linearVelocity.y >= -_maximumFallSpeed)
             {
                 return;
             }
 
-            Vector2 velocity = _body.velocity;
+            Vector2 velocity = _body.linearVelocity;
             velocity.y = -_maximumFallSpeed;
-            _body.velocity = velocity;
+            _body.linearVelocity = velocity;
         }
 
         private void CleanupEvents()

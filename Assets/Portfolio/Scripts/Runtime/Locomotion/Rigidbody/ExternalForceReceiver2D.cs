@@ -22,13 +22,13 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public void AddVelocity(UnityEngine.Rigidbody2D body, Vector2 velocity, bool protectHorizontalMomentum = true)
         {
-            body.velocity += velocity;
+            body.linearVelocity += velocity;
             ProtectHorizontalMomentum(protectHorizontalMomentum);
         }
 
         public void SetVelocity(UnityEngine.Rigidbody2D body, Vector2 velocity, bool protectHorizontalMomentum = true)
         {
-            body.velocity = velocity;
+            body.linearVelocity = velocity;
             ProtectHorizontalMomentum(protectHorizontalMomentum);
         }
 

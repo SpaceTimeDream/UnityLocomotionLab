@@ -29,14 +29,14 @@ namespace Portfolio.Locomotion.Rigidbody
         {
             _jumpHeld = false;
 
-            if (!_enableEarlyRelease || body.velocity.y <= 0f)
+            if (!_enableEarlyRelease || body.linearVelocity.y <= 0f)
             {
                 return;
             }
 
-            Vector2 velocity = body.velocity;
+            Vector2 velocity = body.linearVelocity;
             velocity.y *= _earlyReleaseVelocityMultiplier;
-            body.velocity = velocity;
+            body.linearVelocity = velocity;
         }
 
         public void TickGrounded(LocomotionState state)
@@ -60,9 +60,9 @@ namespace Portfolio.Locomotion.Rigidbody
                 return;
             }
 
-            Vector2 velocity = body.velocity;
+            Vector2 velocity = body.linearVelocity;
             velocity.y = _jumpVelocity;
-            body.velocity = velocity;
+            body.linearVelocity = velocity;
             _jumpConsumed = true;
             _lastJumpRequestTime = -999f;
             _lastGroundedTime = -999f;
