@@ -3,6 +3,7 @@ using UnityEngine;
 
 namespace Portfolio.Locomotion.Spline
 {
+    [ExecuteAlways]
     public class SplinePathLineRenderer2D : MonoBehaviour
     {
         // Fields
@@ -22,10 +23,32 @@ namespace Portfolio.Locomotion.Spline
         private void OnValidate()
         {
             _maximumSamples = Mathf.Max(2, _maximumSamples);
-            if (_path == null) _path = GetComponent<SpriteShapeSplinePath2D>();
-            if (_lineRenderer == null) _lineRenderer = GetComponent<LineRenderer>();
+            InitializeComponents();
+
+            if (!Application.isPlaying)
+            {
+                RefreshLine();
+            }
         }
 #endif
+
+        // Public Methods
+        public void RefreshLine()
+        {
+            if (_path == null || _lineRenderer == null || !_path.IsValid())
+            {
+                return;
+            }
+
+            EnsurePositionBuffer();
+            int count = _path.CopySamplePositions(_positions);
+            _lineRenderer.positionCount = count;
+
+            for (int i = 0; i < count; i++)
+            {
+                _lineRenderer.SetPosition(i, _positions[i]);
+            }
+        }
 
         // Private Methods
         private void Initialize()
@@ -38,30 +61,31 @@ namespace Portfolio.Locomotion.Spline
 
         private void InitializeComponents()
         {
-            if (_path == null) _path = GetComponent<SpriteShapeSplinePath2D>();
-            if (_lineRenderer == null) _lineRenderer = GetComponent<LineRenderer>();
+            if (_path == null)
+            {
+                _path = GetComponent<SpriteShapeSplinePath2D>();
+            }
+
+            if (_lineRenderer == null)
+            {
+                _lineRenderer = GetComponent<LineRenderer>();
+            }
         }
 
         private void InitializeModules()
         {
-            _positions = new Vector3[_maximumSamples];
+            EnsurePositionBuffer();
         }
 
-        private void InitializeEvents() { }
-
-        private void RefreshLine()
+        private void InitializeEvents()
         {
-            if (_path == null || _lineRenderer == null || !_path.IsValid())
-            {
-                return;
-            }
+        }
 
-            int count = _path.CopySamplePositions(_positions);
-            _lineRenderer.positionCount = count;
-
-            for (int i = 0; i < count; i++)
+        private void EnsurePositionBuffer()
+        {
+            if (_positions == null || _positions.Length != _maximumSamples)
             {
-                _lineRenderer.SetPosition(i, _positions[i]);
+                _positions = new Vector3[_maximumSamples];
             }
         }
     }

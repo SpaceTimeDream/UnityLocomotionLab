@@ -7,16 +7,30 @@ namespace Portfolio.Locomotion.Spline
     {
         // Fields
         [SerializeField] private SpriteShapeSplinePath2D _path;
-        [SerializeField] private float _landingTolerance = 0.08f;
+        [SerializeField] private SplineGroundProbe2D _groundProbe;
+        [SerializeField] private float _maximumLandingSnapDistance = 0.35f;
 
         // Properties
         public SpriteShapeSplinePath2D Path => _path;
-        public float LandingTolerance => _landingTolerance;
+        public SplineGroundProbe2D GroundProbe => _groundProbe;
+
+        // Unity Methods
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            _maximumLandingSnapDistance = Mathf.Max(0.01f, _maximumLandingSnapDistance);
+
+            if (_groundProbe == null)
+            {
+                _groundProbe = GetComponent<SplineGroundProbe2D>();
+            }
+        }
+#endif
 
         // Public Methods
         public bool IsValid()
         {
-            return _path != null && _path.IsValid();
+            return _path != null && _path.IsValid() && _groundProbe != null;
         }
 
         public void SnapNearest(SplineLocomotionState state, Transform anchor)
@@ -25,7 +39,20 @@ namespace Portfolio.Locomotion.Spline
             ApplySample(state, sample);
             state.Grounded = true;
             state.AirborneVelocity = Vector2.zero;
-            anchor.position = sample.Position;
+            TranslateTo(anchor, sample.Position);
+        }
+
+        public bool HasGroundContact(Vector2 anchorPosition)
+        {
+            return _groundProbe != null && _groundProbe.TryGetGroundedHit(anchorPosition, out _);
+        }
+
+        public void Detach(SplineLocomotionState state)
+        {
+            state.AirborneVelocity = state.SurfaceTangent * state.TangentialGroundSpeed;
+            state.Grounded = false;
+            state.Rising = state.AirborneVelocity.y > 0f;
+            state.Falling = !state.Rising;
         }
 
         public void ConstrainAtDistance(SplineLocomotionState state, Transform anchor, float walkableSlopeAngle)
@@ -44,7 +71,7 @@ namespace Portfolio.Locomotion.Spline
             state.Grounded = true;
             state.Rising = false;
             state.Falling = false;
-            anchor.position = sample.Position;
+            TranslateTo(anchor, sample.Position);
         }
 
         public bool TryLand(SplineLocomotionState state, Vector2 previousPosition, Vector2 proposedPosition, float walkableSlopeAngle)
@@ -54,7 +81,14 @@ namespace Portfolio.Locomotion.Spline
                 return false;
             }
 
-            if (!_path.TryFindLanding(previousPosition, proposedPosition, _landingTolerance, out SplinePathSample2D sample))
+            if (_groundProbe == null || !_groundProbe.TryGetLandingHit(previousPosition, proposedPosition, out RaycastHit2D hit))
+            {
+                return false;
+            }
+
+            SplinePathSample2D sample = _path.FindNearest(hit.point);
+
+            if (Vector2.Distance(sample.Position, hit.point) > _maximumLandingSnapDistance)
             {
                 return false;
             }
@@ -84,6 +118,12 @@ namespace Portfolio.Locomotion.Spline
         {
             state.WalkableSlope = Mathf.Abs(state.SignedSlopeAngle) <= walkableSlopeAngle;
             state.SteepSlope = !state.WalkableSlope;
+        }
+
+        private void TranslateTo(Transform anchor, Vector2 position)
+        {
+            Vector2 delta = position - (Vector2)anchor.position;
+            anchor.Translate(delta, Space.World);
         }
     }
 }
