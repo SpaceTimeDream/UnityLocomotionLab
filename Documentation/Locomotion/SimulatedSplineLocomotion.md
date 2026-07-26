@@ -41,9 +41,6 @@ During descent, the ground probe casts along the proposed movement step. A valid
 - Jump: existing Gameplay/Jump binding.
 - Pause: existing System/Pause binding.
 
-## Asset generation
+## Demo assets
 
-Use `Tools/Portfolio/Locomotion Demos/Create Simulated Spline Demo` in the Unity Editor to create or refresh:
-
-- `Assets/Portfolio/Prefabs/Locomotion/SimulatedPlayerCapsule.prefab`
-- `Assets/Portfolio/Scenes/SimulatedSplineLocomotionDemo.unity`
+The finished simulated player prefab and demo scene are committed under `Assets/Portfolio`. Open the scene directly; no editor generation step is required.
