@@ -20,6 +20,7 @@ namespace Portfolio.Locomotion.Spline.Path
         private Matrix4x4 _cachedMatrix;
         private int _cachedPointCount = -1;
         private int _cachedSamplesPerSegment = -1;
+        private int _cachedSplineHash;
         private float _totalLength;
         private bool _cacheValid;
 
@@ -52,6 +53,13 @@ namespace Portfolio.Locomotion.Spline.Path
         private void OnValidate()
         {
             _samplesPerSegment = Mathf.Max(2, _samplesPerSegment);
+            _gizmoNormalLength = Mathf.Max(0f, _gizmoNormalLength);
+
+            if (_spriteShapeController == null)
+            {
+                _spriteShapeController = GetComponent<SpriteShapeController>();
+            }
+
             _cacheValid = false;
         }
 #endif
@@ -144,39 +152,22 @@ namespace Portfolio.Locomotion.Spline.Path
             return count;
         }
 
-        public bool TryFindLanding(Vector2 previousPosition, Vector2 proposedPosition, float tolerance, out SplinePathSample2D sample)
+        public int CopyLocalSamplePositions(Vector2[] results)
         {
             EnsureCache();
-            Vector2 motion = proposedPosition - previousPosition;
+            int count = Mathf.Min(results.Length, _points.Count);
 
-            for (int i = 0; i < _points.Count - 1; i++)
+            for (int i = 0; i < count; i++)
             {
-                Vector2 start = _points[i];
-                Vector2 end = _points[i + 1];
-                Vector2 tangent = (end - start).normalized;
-                Vector2 normal = new Vector2(-tangent.y, tangent.x);
-
-                if (normal.y < 0f)
-                {
-                    normal = -normal;
-                }
-
-                float previousSide = Vector2.Dot(previousPosition - start, normal);
-                float proposedSide = Vector2.Dot(proposedPosition - start, normal);
-
-                if (previousSide < -tolerance || proposedSide > tolerance || Vector2.Dot(motion, normal) >= 0f)
-                {
-                    continue;
-                }
-
-                Vector2 nearest = ClosestPointOnSegment(proposedPosition, start, end);
-                float along = Vector2.Dot(nearest - start, end - start) / Mathf.Max(0.0001f, (end - start).sqrMagnitude);
-                sample = Evaluate(_distances[i] + (end - start).magnitude * Mathf.Clamp01(along));
-                return true;
+                results[i] = transform.InverseTransformPoint(_points[i]);
             }
 
-            sample = default;
-            return false;
+            return count;
+        }
+
+        public void InvalidateCache()
+        {
+            _cacheValid = false;
         }
 
         // Private Methods
@@ -201,7 +192,13 @@ namespace Portfolio.Locomotion.Spline.Path
 
         private void EnsureCache()
         {
-            if (!_cacheValid || _cachedMatrix != transform.localToWorldMatrix || _cachedSamplesPerSegment != _samplesPerSegment || _cachedPointCount != GetSplinePointCount())
+            int splineHash = CalculateSplineHash();
+
+            if (!_cacheValid ||
+                _cachedMatrix != transform.localToWorldMatrix ||
+                _cachedSamplesPerSegment != _samplesPerSegment ||
+                _cachedPointCount != GetSplinePointCount() ||
+                _cachedSplineHash != splineHash)
             {
                 RebuildCache();
             }
@@ -218,6 +215,7 @@ namespace Portfolio.Locomotion.Spline.Path
             _cachedMatrix = transform.localToWorldMatrix;
             _cachedSamplesPerSegment = _samplesPerSegment;
             _cachedPointCount = GetSplinePointCount();
+            _cachedSplineHash = CalculateSplineHash();
             _cacheValid = true;
 
             if (_spriteShapeController == null || _spriteShapeController.spline.GetPointCount() < 2 || !_spriteShapeController.spline.isOpenEnded)
@@ -246,6 +244,32 @@ namespace Portfolio.Locomotion.Spline.Path
         private int GetSplinePointCount()
         {
             return _spriteShapeController != null ? _spriteShapeController.spline.GetPointCount() : 0;
+        }
+
+        private int CalculateSplineHash()
+        {
+            if (_spriteShapeController == null)
+            {
+                return 0;
+            }
+
+            Spline spline = _spriteShapeController.spline;
+
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 31 + spline.GetPointCount();
+                hash = hash * 31 + spline.isOpenEnded.GetHashCode();
+
+                for (int i = 0; i < spline.GetPointCount(); i++)
+                {
+                    hash = hash * 31 + spline.GetPosition(i).GetHashCode();
+                    hash = hash * 31 + spline.GetLeftTangent(i).GetHashCode();
+                    hash = hash * 31 + spline.GetRightTangent(i).GetHashCode();
+                }
+
+                return hash;
+            }
         }
 
         private Vector2 EvaluateBezier(Spline spline, int segment, float t)
@@ -302,12 +326,6 @@ namespace Portfolio.Locomotion.Spline.Path
             return Mathf.Max(0, _distances.Count - 2);
         }
 
-        private Vector2 ClosestPointOnSegment(Vector2 point, Vector2 start, Vector2 end)
-        {
-            Vector2 span = end - start;
-            return start + span * Mathf.Clamp01(Vector2.Dot(point - start, span) / Mathf.Max(0.0001f, span.sqrMagnitude));
-        }
-
         private void DrawSelectedGizmos()
         {
             if (!_drawSelectedGizmos || !IsValid())
@@ -325,7 +343,12 @@ namespace Portfolio.Locomotion.Spline.Path
             for (int i = 0; i < _points.Count; i += Mathf.Max(1, _samplesPerSegment / 2))
             {
                 Vector2 normal = new Vector2(-_tangents[i].y, _tangents[i].x);
-                if (normal.y < 0f) normal = -normal;
+
+                if (normal.y < 0f)
+                {
+                    normal = -normal;
+                }
+
                 Gizmos.DrawLine(_points[i], _points[i] + normal * _gizmoNormalLength);
                 Gizmos.DrawLine(_points[i], _points[i] + _tangents[i] * _gizmoNormalLength);
             }

@@ -35,16 +35,29 @@ namespace Portfolio.Locomotion.Spline
 #if UNITY_EDITOR
         private void OnValidate()
         {
-            if (_movement == null) _movement = GetComponent<SimulatedSplineMovement>();
-            if (_jump == null) _jump = GetComponent<SimulatedSplineJump>();
-            if (_groundConstraint == null) _groundConstraint = GetComponent<SplineGroundConstraint2D>();
+            _groundedAlignmentSpeed = Mathf.Max(0f, _groundedAlignmentSpeed);
+
+            if (_movement == null)
+            {
+                _movement = GetComponent<SimulatedSplineMovement>();
+            }
+
+            if (_jump == null)
+            {
+                _jump = GetComponent<SimulatedSplineJump>();
+            }
+
+            if (_groundConstraint == null)
+            {
+                _groundConstraint = GetComponent<SplineGroundConstraint2D>();
+            }
         }
 #endif
 
         // Public Methods
         public void SetMovementInput(Vector2 input)
         {
-            _movementInput = input;
+            _movementInput = Vector2.ClampMagnitude(input, 1f);
         }
 
         public void RequestJump()
@@ -110,17 +123,34 @@ namespace Portfolio.Locomotion.Spline
         private void InitializeComponents()
         {
             _cachedTransform = transform;
-            if (_visualRoot == null && transform.childCount > 0) _visualRoot = transform.GetChild(0);
+
+            if (_visualRoot == null && transform.childCount > 0)
+            {
+                _visualRoot = transform.GetChild(0);
+            }
         }
 
         private void InitializeModules()
         {
-            if (_movement == null) _movement = GetComponent<SimulatedSplineMovement>();
-            if (_jump == null) _jump = GetComponent<SimulatedSplineJump>();
-            if (_groundConstraint == null) _groundConstraint = GetComponent<SplineGroundConstraint2D>();
+            if (_movement == null)
+            {
+                _movement = GetComponent<SimulatedSplineMovement>();
+            }
+
+            if (_jump == null)
+            {
+                _jump = GetComponent<SimulatedSplineJump>();
+            }
+
+            if (_groundConstraint == null)
+            {
+                _groundConstraint = GetComponent<SplineGroundConstraint2D>();
+            }
         }
 
-        private void InitializeEvents() { }
+        private void InitializeEvents()
+        {
+        }
 
         private void SimulateFixedStep()
         {
@@ -136,9 +166,10 @@ namespace Portfolio.Locomotion.Spline
             }
 
             float horizontalInput = _state.ControlEnabled ? _movementInput.x : 0f;
+            UpdateGroundContact();
             _jump.NotifyGrounded(_state.Grounded);
 
-            if (_state.Grounded && _jump.CanJump())
+            if (_state.ControlEnabled && _jump.CanJump())
             {
                 _jump.ConsumeJump(_state);
             }
@@ -164,14 +195,18 @@ namespace Portfolio.Locomotion.Spline
             Vector2 previousPosition = _cachedTransform.position;
             _movement.SimulateAirborne(_state, horizontalInput, Time.fixedDeltaTime);
             _jump.ApplyEarlyRelease(_state);
-            Vector2 proposedPosition = previousPosition + _state.AirborneVelocity * Time.fixedDeltaTime;
+            Vector2 motion = _state.AirborneVelocity * Time.fixedDeltaTime;
+            Vector2 proposedPosition = previousPosition + motion;
             _state.Rising = _state.AirborneVelocity.y > 0f;
             _state.Falling = _state.AirborneVelocity.y < 0f;
 
             if (_groundConstraint.TryLand(_state, previousPosition, proposedPosition, _movement.WalkableSlopeAngle))
             {
-                _cachedTransform.position = _state.AnchorPosition;
+                TranslateTo(_state.AnchorPosition);
                 AlignVisual(false);
+
+                _jump.NotifyGrounded(true);
+
                 if (_jump.HasBufferedJump())
                 {
                     _jump.ConsumeJump(_state);
@@ -179,9 +214,19 @@ namespace Portfolio.Locomotion.Spline
                 return;
             }
 
-            _cachedTransform.position = proposedPosition;
-            _state.AnchorPosition = proposedPosition;
+            _cachedTransform.Translate(motion, Space.World);
+            _state.AnchorPosition = _cachedTransform.position;
             AlignVisual(true);
+        }
+
+        private void UpdateGroundContact()
+        {
+            if (!_state.Grounded || _groundConstraint.HasGroundContact(_cachedTransform.position))
+            {
+                return;
+            }
+
+            _groundConstraint.Detach(_state);
         }
 
         private void AlignVisual(bool upright)
@@ -193,6 +238,12 @@ namespace Portfolio.Locomotion.Spline
 
             Quaternion targetRotation = upright ? Quaternion.identity : Quaternion.FromToRotation(Vector3.up, _state.SurfaceNormal);
             _visualRoot.rotation = Quaternion.Lerp(_visualRoot.rotation, targetRotation, _groundedAlignmentSpeed * Time.fixedDeltaTime);
+        }
+
+        private void TranslateTo(Vector2 position)
+        {
+            Vector2 delta = position - (Vector2)_cachedTransform.position;
+            _cachedTransform.Translate(delta, Space.World);
         }
     }
 }
