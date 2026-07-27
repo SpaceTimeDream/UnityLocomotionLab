@@ -853,6 +853,7 @@ MonoBehaviour:
   _jumpAscentGravityMultiplier: 1
   _fallGravityMultiplier: 1.6
   _maximumFallSpeed: 18
+  _steepSlopeJumpCheckDistance: 0.35
 --- !u!70 &2001132993
 CapsuleCollider2D:
   m_ObjectHideFlags: 0

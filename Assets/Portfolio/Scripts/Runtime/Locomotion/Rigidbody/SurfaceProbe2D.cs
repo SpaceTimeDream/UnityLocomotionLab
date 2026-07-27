@@ -67,6 +67,28 @@ namespace Portfolio.Locomotion.Rigidbody
             return new Vector2(surfaceNormal.y, -surfaceNormal.x).normalized;
         }
 
+        public bool HasNearbySteepSlope(CapsuleCollider2D capsuleCollider, float facingDirection, float distance)
+        {
+            if (!_initialized)
+            {
+                Initialize();
+            }
+
+            int hitCount = capsuleCollider.Cast(Vector2.right * Mathf.Sign(facingDirection), _contactFilter, _hits, distance);
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit2D hit = _hits[i];
+
+                if (hit.collider != null && Vector2.Angle(hit.normal, Vector2.up) > _maximumWalkableSlopeAngle)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public void Validate()
         {
             _probeDistance = Mathf.Max(0.01f, _probeDistance);
