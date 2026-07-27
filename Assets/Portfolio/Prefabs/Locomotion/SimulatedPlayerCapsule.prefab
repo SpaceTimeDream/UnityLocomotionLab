@@ -59,6 +59,7 @@ MonoBehaviour:
     _signedSlopeAngle: 0
   _demoResetY: -8
   _groundedAlignmentSpeed: 18
+  _constrainZRotation: 1
 --- !u!114 &1003
 MonoBehaviour:
   m_ObjectHideFlags: 0

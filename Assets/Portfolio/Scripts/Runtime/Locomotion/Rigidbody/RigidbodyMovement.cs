@@ -15,8 +15,14 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private float _steepSlopeSlideSpeed = 4f;
 
         // Public Methods
-        public void ApplyMovement(UnityEngine.Rigidbody2D body, LocomotionState state, SurfaceProbe2D surfaceProbe, float movementInput, bool protectHorizontalMomentum)
+        public void ApplyMovement(UnityEngine.Rigidbody2D body, LocomotionState state, SurfaceProbe2D surfaceProbe, float movementInput, bool protectHorizontalMomentum, bool blockMovementIntoSteepSlope, float facingDirection)
         {
+            if (blockMovementIntoSteepSlope)
+            {
+                movementInput = RemoveInputIntoSlope(movementInput, facingDirection);
+                RemoveVelocityIntoSlope(body, facingDirection);
+            }
+
             if (protectHorizontalMomentum)
             {
                 return;
@@ -64,6 +70,23 @@ namespace Portfolio.Locomotion.Rigidbody
         {
             velocity.x = Mathf.MoveTowards(velocity.x, targetSpeed, acceleration * Time.fixedDeltaTime);
             return velocity;
+        }
+
+        private float RemoveInputIntoSlope(float movementInput, float facingDirection)
+        {
+            return Mathf.Sign(movementInput) == Mathf.Sign(facingDirection) ? 0f : movementInput;
+        }
+
+        private void RemoveVelocityIntoSlope(UnityEngine.Rigidbody2D body, float facingDirection)
+        {
+            if (body.linearVelocity.x * facingDirection <= 0f)
+            {
+                return;
+            }
+
+            Vector2 velocity = body.linearVelocity;
+            velocity.x = 0f;
+            body.linearVelocity = velocity;
         }
 
         private Vector2 ApplySlopeMovement(Vector2 velocity, LocomotionState state, SurfaceProbe2D surfaceProbe, float movementInput)

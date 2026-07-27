@@ -50,7 +50,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _jumpConsumed = false;
         }
 
-        public void ApplyJump(UnityEngine.Rigidbody2D body, LocomotionState state)
+        public void ApplyJump(UnityEngine.Rigidbody2D body, LocomotionState state, bool blockHorizontalMovement)
         {
             bool hasBufferedJump = Time.time <= _lastJumpRequestTime + _jumpBufferTime;
             bool hasCoyoteTime = Time.time <= _lastGroundedTime + _coyoteTime;
@@ -61,6 +61,12 @@ namespace Portfolio.Locomotion.Rigidbody
             }
 
             Vector2 velocity = body.linearVelocity;
+
+            if (blockHorizontalMovement)
+            {
+                velocity.x = 0f;
+            }
+
             velocity.y = _jumpVelocity;
             body.linearVelocity = velocity;
             _jumpConsumed = true;

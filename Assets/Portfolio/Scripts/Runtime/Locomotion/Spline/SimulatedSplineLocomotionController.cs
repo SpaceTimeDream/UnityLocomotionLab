@@ -12,11 +12,13 @@ namespace Portfolio.Locomotion.Spline
         [SerializeField] private SplineLocomotionState _state = new SplineLocomotionState();
         [SerializeField] private float _demoResetY = -8f;
         [SerializeField] private float _groundedAlignmentSpeed = 18f;
+        [SerializeField] private bool _constrainZRotation;
 
         private Transform _cachedTransform;
         private Vector2 _movementInput;
         private Vector2 _spawnPosition;
         private bool _initialized;
+        private float _startingVisualZRotation;
 
         // Properties
         public SplineLocomotionState State => _state;
@@ -30,6 +32,11 @@ namespace Portfolio.Locomotion.Spline
         private void FixedUpdate()
         {
             SimulateFixedStep();
+        }
+
+        private void OnDestroy()
+        {
+            CleanupEvents();
         }
 
 #if UNITY_EDITOR
@@ -127,6 +134,11 @@ namespace Portfolio.Locomotion.Spline
             if (_visualRoot == null && transform.childCount > 0)
             {
                 _visualRoot = transform.GetChild(0);
+            }
+
+            if (_visualRoot != null)
+            {
+                _startingVisualZRotation = _visualRoot.eulerAngles.z;
             }
         }
 
@@ -236,14 +248,29 @@ namespace Portfolio.Locomotion.Spline
                 return;
             }
 
-            Quaternion targetRotation = upright ? Quaternion.identity : Quaternion.FromToRotation(Vector3.up, _state.SurfaceNormal);
+            if (_constrainZRotation)
+            {
+                _visualRoot.rotation = Quaternion.Euler(0f, 0f, _startingVisualZRotation);
+                return;
+            }
+
+            Quaternion targetRotation = GetTargetVisualRotation(upright);
             _visualRoot.rotation = Quaternion.Lerp(_visualRoot.rotation, targetRotation, _groundedAlignmentSpeed * Time.fixedDeltaTime);
+        }
+
+        private Quaternion GetTargetVisualRotation(bool upright)
+        {
+            return upright ? Quaternion.identity : Quaternion.FromToRotation(Vector3.up, _state.SurfaceNormal);
         }
 
         private void TranslateTo(Vector2 position)
         {
             Vector2 delta = position - (Vector2)_cachedTransform.position;
             _cachedTransform.Translate(delta, Space.World);
+        }
+
+        private void CleanupEvents()
+        {
         }
     }
 }
