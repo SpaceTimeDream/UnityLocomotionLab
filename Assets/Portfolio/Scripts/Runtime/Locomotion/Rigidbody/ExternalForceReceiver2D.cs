@@ -5,7 +5,13 @@ namespace Portfolio.Locomotion.Rigidbody
     [System.Serializable]
     public class ExternalForceReceiver2D
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private float _horizontalProtectionTime = 0.12f;
 
         private float _protectedUntilTime;
@@ -13,7 +19,25 @@ namespace Portfolio.Locomotion.Rigidbody
         // Properties
         public bool IsHorizontalProtected => Time.time < _protectedUntilTime;
 
-        // Public Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
         public void AddImpulse(UnityEngine.Rigidbody2D body, Vector2 impulse, bool protectHorizontalMomentum = true)
         {
             body.AddForce(impulse, ForceMode2D.Impulse);
@@ -42,7 +66,6 @@ namespace Portfolio.Locomotion.Rigidbody
             _horizontalProtectionTime = Mathf.Max(0f, _horizontalProtectionTime);
         }
 
-        // Private Methods
         private void ProtectHorizontalMomentum(bool protectHorizontalMomentum)
         {
             if (!protectHorizontalMomentum)
@@ -52,5 +75,8 @@ namespace Portfolio.Locomotion.Rigidbody
 
             _protectedUntilTime = Time.time + _horizontalProtectionTime;
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+#endif
     }
 }

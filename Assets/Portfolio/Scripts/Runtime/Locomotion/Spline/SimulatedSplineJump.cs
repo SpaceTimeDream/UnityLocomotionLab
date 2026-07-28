@@ -4,7 +4,13 @@ namespace Portfolio.Locomotion.Spline
 {
     public class SimulatedSplineJump : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private float _jumpSpeed = 11f;
         [SerializeField] private float _jumpBufferTime = 0.12f;
         [SerializeField] private float _coyoteTime = 0.1f;
@@ -15,7 +21,25 @@ namespace Portfolio.Locomotion.Spline
         private bool _jumpConsumed;
         private bool _releaseQueued;
 
-        // Public Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
         public void NotifyGrounded(bool grounded)
         {
             if (grounded)
@@ -79,5 +103,8 @@ namespace Portfolio.Locomotion.Spline
             _jumpConsumed = false;
             _releaseQueued = false;
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+#endif
     }
 }

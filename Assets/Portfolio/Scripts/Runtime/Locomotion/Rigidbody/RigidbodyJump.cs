@@ -6,7 +6,13 @@ namespace Portfolio.Locomotion.Rigidbody
     [System.Serializable]
     public class RigidbodyJump
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private float _jumpVelocity = 12f;
         [SerializeField] private float _jumpBufferTime = 0.12f;
         [SerializeField] private float _coyoteTime = 0.1f;
@@ -18,7 +24,26 @@ namespace Portfolio.Locomotion.Rigidbody
         private bool _jumpConsumed;
         private bool _jumpHeld;
 
-        // Public Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
+
         public void RequestJump()
         {
             _lastJumpRequestTime = Time.time;
@@ -89,5 +114,9 @@ namespace Portfolio.Locomotion.Rigidbody
             _coyoteTime = Mathf.Max(0f, _coyoteTime);
             _earlyReleaseVelocityMultiplier = Mathf.Clamp01(_earlyReleaseVelocityMultiplier);
         }
+
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+#endif
     }
 }

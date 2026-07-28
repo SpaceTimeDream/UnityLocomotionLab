@@ -4,7 +4,13 @@ namespace Portfolio.Locomotion.Spline
 {
     public class SimulatedSplineMovement : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private float _maximumGroundSpeed = 7f;
         [SerializeField] private float _groundAcceleration = 45f;
         [SerializeField] private float _groundBraking = 55f;
@@ -19,7 +25,25 @@ namespace Portfolio.Locomotion.Spline
         public float Gravity => _gravity;
         public float WalkableSlopeAngle => _walkableSlopeAngle;
 
-        // Public Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
         public void SimulateGrounded(SplineLocomotionState state, float input, float deltaTime)
         {
             float targetDirection = Mathf.Abs(input) > 0.01f ? Mathf.Sign(input) : 0f;
@@ -52,5 +76,8 @@ namespace Portfolio.Locomotion.Spline
             velocity.y = Mathf.Max(velocity.y - _gravity * deltaTime, -_maximumFallSpeed);
             state.AirborneVelocity = velocity;
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+#endif
     }
 }

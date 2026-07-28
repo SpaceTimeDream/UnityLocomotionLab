@@ -6,7 +6,13 @@ namespace Portfolio.Locomotion.Spline
     [Serializable]
     public class SplineLocomotionState
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private bool _controlEnabled = true;
         [SerializeField] private bool _grounded;
         [SerializeField] private bool _rising;
@@ -38,7 +44,25 @@ namespace Portfolio.Locomotion.Spline
         public Vector2 SurfaceNormal { get => _surfaceNormal; set => _surfaceNormal = value; }
         public float SignedSlopeAngle { get => _signedSlopeAngle; set => _signedSlopeAngle = value; }
 
-        // Public Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
         public void Reset(Vector2 anchorPosition)
         {
             _controlEnabled = true;
@@ -56,5 +80,8 @@ namespace Portfolio.Locomotion.Spline
             _surfaceNormal = Vector2.up;
             _signedSlopeAngle = 0f;
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+#endif
     }
 }

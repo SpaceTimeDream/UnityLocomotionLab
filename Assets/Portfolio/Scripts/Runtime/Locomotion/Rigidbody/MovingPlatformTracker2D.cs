@@ -6,13 +6,37 @@ namespace Portfolio.Locomotion.Rigidbody
     [System.Serializable]
     public class MovingPlatformTracker2D
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private bool _enabled = true;
 
         private Transform _platform;
         private Vector3 _lastPosition;
 
-        // Public Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
         public void Track(LocomotionState state, Collider2D surfaceCollider)
         {
             if (!_enabled || !state.Grounded || surfaceCollider == null)
@@ -46,5 +70,8 @@ namespace Portfolio.Locomotion.Rigidbody
         {
             _platform = null;
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+#endif
     }
 }

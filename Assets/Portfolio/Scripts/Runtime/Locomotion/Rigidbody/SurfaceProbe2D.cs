@@ -6,7 +6,13 @@ namespace Portfolio.Locomotion.Rigidbody
     [System.Serializable]
     public class SurfaceProbe2D
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private LayerMask _groundLayers = Physics2D.DefaultRaycastLayers;
         [SerializeField] private float _probeDistance = 0.08f;
         [SerializeField] private float _probeInset = 0.04f;
@@ -21,7 +27,22 @@ namespace Portfolio.Locomotion.Rigidbody
         public float MaximumWalkableSlopeAngle => _maximumWalkableSlopeAngle;
         public Collider2D SurfaceCollider => _surfaceCollider;
 
-        // Public Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
         public void Initialize()
         {
             _contactFilter = new ContactFilter2D();
@@ -29,6 +50,10 @@ namespace Portfolio.Locomotion.Rigidbody
             _contactFilter.useTriggers = false;
             _initialized = true;
         }
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
 
         public void Probe(CapsuleCollider2D capsuleCollider, LocomotionState state)
         {
@@ -96,7 +121,6 @@ namespace Portfolio.Locomotion.Rigidbody
             _maximumWalkableSlopeAngle = Mathf.Clamp(_maximumWalkableSlopeAngle, 0f, 89f);
         }
 
-        // Private Methods
         private bool TryGetBestHit(Vector2 origin, float distance, Collider2D ignoredCollider, ref RaycastHit2D bestHit)
         {
             int hitCount = Physics2D.Raycast(origin, Vector2.down, _contactFilter, _hits, distance);
@@ -120,5 +144,9 @@ namespace Portfolio.Locomotion.Rigidbody
 
             return foundHit;
         }
+
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+#endif
     }
 }

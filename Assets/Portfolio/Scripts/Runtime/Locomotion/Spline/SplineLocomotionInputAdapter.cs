@@ -6,13 +6,27 @@ namespace Portfolio.Locomotion.Spline
 {
     public class SplineLocomotionInputAdapter : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private GameInput _gameInput;
         [SerializeField] private SimulatedSplineLocomotionController _controller;
 
         private bool _initialized;
 
-        // Unity Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
         private void Start()
         {
             Initialize();
@@ -40,17 +54,12 @@ namespace Portfolio.Locomotion.Spline
             CleanupEvents();
         }
 
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            if (_controller == null)
-            {
-                _controller = GetComponent<SimulatedSplineLocomotionController>();
-            }
-        }
-#endif
+        #endregion
 
-        // Private Methods
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
         private void Initialize()
         {
             if (_initialized)
@@ -96,6 +105,10 @@ namespace Portfolio.Locomotion.Spline
             GameManager.GameStateChanged -= HandleGameStateChanged;
             GameManager.GameStateChanged += HandleGameStateChanged;
         }
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
 
         private void HandleMovementValueChanged(Vector2 movementValue)
         {
@@ -150,5 +163,16 @@ namespace Portfolio.Locomotion.Spline
 
             GameManager.GameStateChanged -= HandleGameStateChanged;
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+
+        private void OnValidate()
+        {
+            if (_controller == null)
+            {
+                _controller = GetComponent<SimulatedSplineLocomotionController>();
+            }
+        }
+#endif
     }
 }
