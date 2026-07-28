@@ -6,7 +6,13 @@ namespace Portfolio.Locomotion.Rigidbody
     [System.Serializable]
     public class RigidbodyMovement
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private float _maximumGroundSpeed = 8f;
         [SerializeField] private float _groundAcceleration = 70f;
         [SerializeField] private float _groundDeceleration = 90f;
@@ -14,7 +20,26 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private float _airDeceleration = 25f;
         [SerializeField] private float _steepSlopeSlideSpeed = 4f;
 
-        // Public Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
+
         public void ApplyMovement(UnityEngine.Rigidbody2D body, LocomotionState state, SurfaceProbe2D surfaceProbe, float movementInput, bool protectHorizontalMomentum, bool blockMovementIntoSteepSlope, float facingDirection)
         {
             if (blockMovementIntoSteepSlope)
@@ -65,7 +90,6 @@ namespace Portfolio.Locomotion.Rigidbody
             _steepSlopeSlideSpeed = Mathf.Max(0f, _steepSlopeSlideSpeed);
         }
 
-        // Private Methods
         private Vector2 ApplyHorizontalSpeed(Vector2 velocity, float targetSpeed, float acceleration)
         {
             velocity.x = Mathf.MoveTowards(velocity.x, targetSpeed, acceleration * Time.fixedDeltaTime);
@@ -120,5 +144,9 @@ namespace Portfolio.Locomotion.Rigidbody
             state.SetSliding(targetSpeed > 0.01f);
             return tangent * targetSpeed;
         }
+
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+#endif
     }
 }

@@ -6,7 +6,13 @@ namespace Portfolio.Locomotion.Spline.Path
 {
     public class SpriteShapeSplinePath2D : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private SpriteShapeController _spriteShapeController;
         [SerializeField, Min(2)] private int _samplesPerSegment = 16;
         [SerializeField] private bool _drawSelectedGizmos = true;
@@ -43,33 +49,54 @@ namespace Portfolio.Locomotion.Spline.Path
             }
         }
 
-        // Unity Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
         private void Start()
         {
             Initialize();
         }
-
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            _samplesPerSegment = Mathf.Max(2, _samplesPerSegment);
-            _gizmoNormalLength = Mathf.Max(0f, _gizmoNormalLength);
-
-            if (_spriteShapeController == null)
-            {
-                _spriteShapeController = GetComponent<SpriteShapeController>();
-            }
-
-            _cacheValid = false;
-        }
-#endif
 
         private void OnDrawGizmosSelected()
         {
             DrawSelectedGizmos();
         }
 
-        // Public Methods
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        private void Initialize()
+        {
+            InitializeComponents();
+            InitializeModules();
+            InitializeEvents();
+            RebuildCache();
+        }
+
+        private void InitializeComponents()
+        {
+            if (_spriteShapeController == null)
+            {
+                _spriteShapeController = GetComponent<SpriteShapeController>();
+            }
+        }
+
+        private void InitializeModules() { }
+
+        private void InitializeEvents() { }
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
         public bool IsValid()
         {
             EnsureCache();
@@ -169,26 +196,6 @@ namespace Portfolio.Locomotion.Spline.Path
         {
             _cacheValid = false;
         }
-
-        // Private Methods
-        private void Initialize()
-        {
-            InitializeComponents();
-            InitializeModules();
-            InitializeEvents();
-            RebuildCache();
-        }
-
-        private void InitializeComponents()
-        {
-            if (_spriteShapeController == null)
-            {
-                _spriteShapeController = GetComponent<SpriteShapeController>();
-            }
-        }
-
-        private void InitializeModules() { }
-        private void InitializeEvents() { }
 
         private void EnsureCache()
         {
@@ -353,5 +360,21 @@ namespace Portfolio.Locomotion.Spline.Path
                 Gizmos.DrawLine(_points[i], _points[i] + _tangents[i] * _gizmoNormalLength);
             }
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+
+        private void OnValidate()
+        {
+            _samplesPerSegment = Mathf.Max(2, _samplesPerSegment);
+            _gizmoNormalLength = Mathf.Max(0f, _gizmoNormalLength);
+
+            if (_spriteShapeController == null)
+            {
+                _spriteShapeController = GetComponent<SpriteShapeController>();
+            }
+
+            _cacheValid = false;
+        }
+#endif
     }
 }

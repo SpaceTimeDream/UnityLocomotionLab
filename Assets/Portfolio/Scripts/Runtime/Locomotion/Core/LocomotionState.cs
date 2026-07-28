@@ -5,7 +5,13 @@ namespace Portfolio.Locomotion.Core
     [System.Serializable]
     public class LocomotionState
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private bool _controlEnabled = true;
         [SerializeField] private bool _grounded;
         [SerializeField] private bool _rising;
@@ -27,7 +33,25 @@ namespace Portfolio.Locomotion.Core
         public Vector2 SurfaceNormal => _surfaceNormal;
         public float SlopeAngle => _slopeAngle;
 
-        // Public Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
         public void SetControlEnabled(bool controlEnabled)
         {
             _controlEnabled = controlEnabled;
@@ -64,5 +88,8 @@ namespace Portfolio.Locomotion.Core
             _surfaceNormal = Vector2.up;
             _slopeAngle = 0f;
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+#endif
     }
 }

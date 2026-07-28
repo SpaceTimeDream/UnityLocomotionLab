@@ -4,7 +4,13 @@ namespace Portfolio.Locomotion.Spline
 {
     public class SplineGroundProbe2D : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private Collider2D _groundCollider;
         [SerializeField] private LayerMask _groundLayers = Physics2D.DefaultRaycastLayers;
         [SerializeField] private float _probeStartOffset = 0.18f;
@@ -15,17 +21,25 @@ namespace Portfolio.Locomotion.Spline
         // Properties
         public Collider2D GroundCollider => _groundCollider;
 
-        // Unity Methods
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            _probeStartOffset = Mathf.Max(0.01f, _probeStartOffset);
-            _groundedProbeDistance = Mathf.Max(0.01f, _groundedProbeDistance);
-            _landingSkin = Mathf.Max(0.001f, _landingSkin);
-        }
-#endif
+        #endregion
 
-        // Public Methods
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
         public bool TryGetGroundedHit(Vector2 anchorPosition, out RaycastHit2D hit)
         {
             Vector2 origin = anchorPosition + Vector2.up * _probeStartOffset;
@@ -59,7 +73,6 @@ namespace Portfolio.Locomotion.Spline
             return hit.normal.y > 0.01f && Vector2.Dot(direction, hit.normal) < 0f;
         }
 
-        // Private Methods
         private bool IsValidHit(RaycastHit2D hit)
         {
             if (hit.collider == null)
@@ -79,5 +92,15 @@ namespace Portfolio.Locomotion.Spline
 
             Debug.DrawRay(origin, direction, hit ? Color.green : Color.red);
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+
+        private void OnValidate()
+        {
+            _probeStartOffset = Mathf.Max(0.01f, _probeStartOffset);
+            _groundedProbeDistance = Mathf.Max(0.01f, _groundedProbeDistance);
+            _landingSkin = Mathf.Max(0.001f, _landingSkin);
+        }
+#endif
     }
 }

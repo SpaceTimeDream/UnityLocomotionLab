@@ -7,7 +7,13 @@ namespace Portfolio.Locomotion.Rigidbody
     [RequireComponent(typeof(CapsuleCollider2D))]
     public class RigidbodyLocomotionController : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [Header("Modules")]
         [SerializeField] private LocomotionState _state = new LocomotionState();
         [SerializeField] private RigidbodyMovement _movement = new RigidbodyMovement();
@@ -33,7 +39,15 @@ namespace Portfolio.Locomotion.Rigidbody
         // Properties
         public LocomotionState State => _state;
 
-        // Unity Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
         private void Start()
         {
             Initialize();
@@ -49,22 +63,38 @@ namespace Portfolio.Locomotion.Rigidbody
             CleanupEvents();
         }
 
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            _gravityScale = Mathf.Max(0f, _gravityScale);
-            _jumpAscentGravityMultiplier = Mathf.Max(0f, _jumpAscentGravityMultiplier);
-            _fallGravityMultiplier = Mathf.Max(0f, _fallGravityMultiplier);
-            _maximumFallSpeed = Mathf.Max(0f, _maximumFallSpeed);
-            _steepSlopeJumpCheckDistance = Mathf.Max(0.01f, _steepSlopeJumpCheckDistance);
-            _movement?.Validate();
-            _jump?.Validate();
-            _surfaceProbe?.Validate();
-            _externalForces?.Validate();
-        }
-#endif
+        #endregion
 
-        // Public Methods
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        private void Initialize()
+        {
+            InitializeComponents();
+            InitializeModules();
+            InitializeEvents();
+        }
+
+        private void InitializeComponents()
+        {
+            _body = GetComponent<UnityEngine.Rigidbody2D>();
+            _capsuleCollider = GetComponent<CapsuleCollider2D>();
+        }
+
+        private void InitializeModules()
+        {
+            _surfaceProbe.Initialize();
+        }
+
+        private void InitializeEvents()
+        {
+        }
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
+
         public void SetMovementInput(float movementInput)
         {
             _movementInput = Mathf.Clamp(movementInput, -1f, 1f);
@@ -121,29 +151,6 @@ namespace Portfolio.Locomotion.Rigidbody
             _externalForces.SetVelocity(_body, velocity, protectHorizontalMomentum);
         }
 
-        // Private Methods
-        private void Initialize()
-        {
-            InitializeComponents();
-            InitializeModules();
-            InitializeEvents();
-        }
-
-        private void InitializeComponents()
-        {
-            _body = GetComponent<UnityEngine.Rigidbody2D>();
-            _capsuleCollider = GetComponent<CapsuleCollider2D>();
-        }
-
-        private void InitializeModules()
-        {
-            _surfaceProbe.Initialize();
-        }
-
-        private void InitializeEvents()
-        {
-        }
-
         private void UpdatePhysics()
         {
             _surfaceProbe.Probe(_capsuleCollider, _state);
@@ -187,5 +194,21 @@ namespace Portfolio.Locomotion.Rigidbody
         private void CleanupEvents()
         {
         }
+
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+        private void OnValidate()
+        {
+            _gravityScale = Mathf.Max(0f, _gravityScale);
+            _jumpAscentGravityMultiplier = Mathf.Max(0f, _jumpAscentGravityMultiplier);
+            _fallGravityMultiplier = Mathf.Max(0f, _fallGravityMultiplier);
+            _maximumFallSpeed = Mathf.Max(0f, _maximumFallSpeed);
+            _steepSlopeJumpCheckDistance = Mathf.Max(0.01f, _steepSlopeJumpCheckDistance);
+            _movement?.Validate();
+            _jump?.Validate();
+            _surfaceProbe?.Validate();
+            _externalForces?.Validate();
+        }
+#endif
     }
 }

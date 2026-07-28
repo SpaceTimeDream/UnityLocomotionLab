@@ -7,13 +7,27 @@ namespace Portfolio.Locomotion.Input
 {
     public class RigidbodyLocomotionInputAdapter : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private GameInput _gameInput;
         [SerializeField] private RigidbodyLocomotionController _controller;
 
         private bool _initialized;
 
-        // Unity Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
         private void Start()
         {
             Initialize();
@@ -41,17 +55,12 @@ namespace Portfolio.Locomotion.Input
             CleanupEvents();
         }
 
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            if (_controller == null)
-            {
-                _controller = GetComponent<RigidbodyLocomotionController>();
-            }
-        }
-#endif
+        #endregion
 
-        // Private Methods
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
         private void Initialize()
         {
             if (_initialized)
@@ -97,6 +106,10 @@ namespace Portfolio.Locomotion.Input
             GameManager.GameStateChanged -= HandleGameStateChanged;
             GameManager.GameStateChanged += HandleGameStateChanged;
         }
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
 
         private void HandleMovementValueChanged(Vector2 movementValue)
         {
@@ -151,5 +164,16 @@ namespace Portfolio.Locomotion.Input
 
             GameManager.GameStateChanged -= HandleGameStateChanged;
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+
+        private void OnValidate()
+        {
+            if (_controller == null)
+            {
+                _controller = GetComponent<RigidbodyLocomotionController>();
+            }
+        }
+#endif
     }
 }

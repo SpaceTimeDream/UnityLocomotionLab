@@ -4,7 +4,13 @@ namespace Portfolio.Locomotion.Spline
 {
     public class SimulatedSplineLocomotionController : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private Transform _visualRoot;
         [SerializeField] private SimulatedSplineMovement _movement;
         [SerializeField] private SimulatedSplineJump _jump;
@@ -23,7 +29,15 @@ namespace Portfolio.Locomotion.Spline
         // Properties
         public SplineLocomotionState State => _state;
 
-        // Unity Methods
+        #endregion
+
+        #region Flags
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
         private void Start()
         {
             Initialize();
@@ -39,78 +53,12 @@ namespace Portfolio.Locomotion.Spline
             CleanupEvents();
         }
 
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            _groundedAlignmentSpeed = Mathf.Max(0f, _groundedAlignmentSpeed);
+        #endregion
 
-            if (_movement == null)
-            {
-                _movement = GetComponent<SimulatedSplineMovement>();
-            }
+        //------------------------------- Initialization Methods -------------------------------//
 
-            if (_jump == null)
-            {
-                _jump = GetComponent<SimulatedSplineJump>();
-            }
+        #region Initialization
 
-            if (_groundConstraint == null)
-            {
-                _groundConstraint = GetComponent<SplineGroundConstraint2D>();
-            }
-        }
-#endif
-
-        // Public Methods
-        public void SetMovementInput(Vector2 input)
-        {
-            _movementInput = Vector2.ClampMagnitude(input, 1f);
-        }
-
-        public void RequestJump()
-        {
-            _jump?.RequestJump();
-        }
-
-        public void ReleaseJump()
-        {
-            _jump?.ReleaseJump();
-        }
-
-        public void SetControlEnabled(bool enabled)
-        {
-            _state.ControlEnabled = enabled;
-            if (!enabled)
-            {
-                _movementInput = Vector2.zero;
-            }
-        }
-
-        public void ResetRuntimeState()
-        {
-            _state.Reset(_cachedTransform.position);
-            _jump?.ResetRuntime();
-            SnapToNearestPathPoint();
-        }
-
-        public void SnapToNearestPathPoint()
-        {
-            if (_groundConstraint == null || !_groundConstraint.IsValid())
-            {
-                return;
-            }
-
-            _groundConstraint.SnapNearest(_state, _cachedTransform);
-            AlignVisual(true);
-        }
-
-        public void ResetToSpawn()
-        {
-            _cachedTransform.position = _spawnPosition;
-            ResetRuntimeState();
-        }
-
-        // Private Methods
         private void Initialize()
         {
             if (_initialized)
@@ -162,6 +110,58 @@ namespace Portfolio.Locomotion.Spline
 
         private void InitializeEvents()
         {
+        }
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
+
+        public void SetMovementInput(Vector2 input)
+        {
+            _movementInput = Vector2.ClampMagnitude(input, 1f);
+        }
+
+        public void RequestJump()
+        {
+            _jump?.RequestJump();
+        }
+
+        public void ReleaseJump()
+        {
+            _jump?.ReleaseJump();
+        }
+
+        public void SetControlEnabled(bool enabled)
+        {
+            _state.ControlEnabled = enabled;
+            if (!enabled)
+            {
+                _movementInput = Vector2.zero;
+            }
+        }
+
+        public void ResetRuntimeState()
+        {
+            _state.Reset(_cachedTransform.position);
+            _jump?.ResetRuntime();
+            SnapToNearestPathPoint();
+        }
+
+        public void SnapToNearestPathPoint()
+        {
+            if (_groundConstraint == null || !_groundConstraint.IsValid())
+            {
+                return;
+            }
+
+            _groundConstraint.SnapNearest(_state, _cachedTransform);
+            AlignVisual(true);
+        }
+
+        public void ResetToSpawn()
+        {
+            _cachedTransform.position = _spawnPosition;
+            ResetRuntimeState();
         }
 
         private void SimulateFixedStep()
@@ -272,5 +272,28 @@ namespace Portfolio.Locomotion.Spline
         private void CleanupEvents()
         {
         }
+
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+        private void OnValidate()
+        {
+            _groundedAlignmentSpeed = Mathf.Max(0f, _groundedAlignmentSpeed);
+
+            if (_movement == null)
+            {
+                _movement = GetComponent<SimulatedSplineMovement>();
+            }
+
+            if (_jump == null)
+            {
+                _jump = GetComponent<SimulatedSplineJump>();
+            }
+
+            if (_groundConstraint == null)
+            {
+                _groundConstraint = GetComponent<SplineGroundConstraint2D>();
+            }
+        }
+#endif
     }
 }

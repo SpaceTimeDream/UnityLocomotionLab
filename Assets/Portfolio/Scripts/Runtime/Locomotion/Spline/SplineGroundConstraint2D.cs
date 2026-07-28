@@ -5,7 +5,13 @@ namespace Portfolio.Locomotion.Spline
 {
     public class SplineGroundConstraint2D : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
         [SerializeField] private SpriteShapeSplinePath2D _path;
         [SerializeField] private SplineGroundProbe2D _groundProbe;
         [SerializeField] private float _maximumLandingSnapDistance = 0.35f;
@@ -14,20 +20,25 @@ namespace Portfolio.Locomotion.Spline
         public SpriteShapeSplinePath2D Path => _path;
         public SplineGroundProbe2D GroundProbe => _groundProbe;
 
-        // Unity Methods
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-            _maximumLandingSnapDistance = Mathf.Max(0.01f, _maximumLandingSnapDistance);
+        #endregion
 
-            if (_groundProbe == null)
-            {
-                _groundProbe = GetComponent<SplineGroundProbe2D>();
-            }
-        }
-#endif
+        #region Flags
 
-        // Public Methods
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
         public bool IsValid()
         {
             return _path != null && _path.IsValid() && _groundProbe != null;
@@ -103,7 +114,6 @@ namespace Portfolio.Locomotion.Spline
             return true;
         }
 
-        // Private Methods
         private void ApplySample(SplineLocomotionState state, SplinePathSample2D sample)
         {
             state.PathDistance = sample.Distance;
@@ -125,5 +135,18 @@ namespace Portfolio.Locomotion.Spline
             Vector2 delta = position - (Vector2)anchor.position;
             anchor.Translate(delta, Space.World);
         }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
+
+        private void OnValidate()
+        {
+            _maximumLandingSnapDistance = Mathf.Max(0.01f, _maximumLandingSnapDistance);
+
+            if (_groundProbe == null)
+            {
+                _groundProbe = GetComponent<SplineGroundProbe2D>();
+            }
+        }
+#endif
     }
 }
