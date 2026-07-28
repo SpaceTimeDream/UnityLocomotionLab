@@ -15,6 +15,7 @@ namespace Portfolio.Locomotion.Spline
         [SerializeField] private SimulatedSplineMovement _movement;
         [SerializeField] private SimulatedSplineJump _jump;
         [SerializeField] private SplineGroundConstraint2D _groundConstraint;
+        [SerializeField] private SimulatedCollisionResolver2D _collisionResolver;
         [SerializeField] private SplineLocomotionState _state = new SplineLocomotionState();
         [SerializeField] private float _demoResetY = -8f;
         [SerializeField] private float _groundedAlignmentSpeed = 18f;
@@ -50,7 +51,7 @@ namespace Portfolio.Locomotion.Spline
 
         private void OnDestroy()
         {
-            CleanupEvents();
+            UnsubscribeEvents();
         }
 
         #endregion
@@ -66,8 +67,8 @@ namespace Portfolio.Locomotion.Spline
                 return;
             }
 
-            InitializeComponents();
             InitializeModules();
+            InitializeComponents();
             InitializeEvents();
             _spawnPosition = _cachedTransform.position;
             _state.Reset(_spawnPosition);
@@ -105,6 +106,11 @@ namespace Portfolio.Locomotion.Spline
             if (_groundConstraint == null)
             {
                 _groundConstraint = GetComponent<SplineGroundConstraint2D>();
+            }
+
+            if (_collisionResolver == null)
+            {
+                _collisionResolver = GetComponent<SimulatedCollisionResolver2D>();
             }
         }
 
@@ -166,7 +172,7 @@ namespace Portfolio.Locomotion.Spline
 
         private void SimulateFixedStep()
         {
-            if (!_initialized || _movement == null || _jump == null || _groundConstraint == null || !_groundConstraint.IsValid())
+            if (!_initialized || _movement == null || _jump == null || _groundConstraint == null || _collisionResolver == null || !_groundConstraint.IsValid())
             {
                 return;
             }
@@ -198,7 +204,7 @@ namespace Portfolio.Locomotion.Spline
         private void SimulateGrounded(float horizontalInput)
         {
             _movement.SimulateGrounded(_state, horizontalInput, Time.fixedDeltaTime);
-            _groundConstraint.ConstrainAtDistance(_state, _cachedTransform, _movement.WalkableSlopeAngle);
+            _groundConstraint.ConstrainAtDistance(_state, _cachedTransform, _movement.WalkableSlopeAngle, _collisionResolver);
             AlignVisual(false);
         }
 
@@ -208,11 +214,13 @@ namespace Portfolio.Locomotion.Spline
             _movement.SimulateAirborne(_state, horizontalInput, Time.fixedDeltaTime);
             _jump.ApplyEarlyRelease(_state);
             Vector2 motion = _state.AirborneVelocity * Time.fixedDeltaTime;
-            Vector2 proposedPosition = previousPosition + motion;
+            Vector2 impactVelocity = _state.AirborneVelocity;
+            Vector2 resolvedMotion = _collisionResolver.Resolve(previousPosition, motion, ref _state.AirborneVelocity, out RaycastHit2D blockingHit);
             _state.Rising = _state.AirborneVelocity.y > 0f;
             _state.Falling = _state.AirborneVelocity.y < 0f;
 
-            if (_groundConstraint.TryLand(_state, previousPosition, proposedPosition, _movement.WalkableSlopeAngle))
+            if (blockingHit.collider != null && blockingHit.normal.y > 0.01f &&
+                _groundConstraint.TryLand(_state, blockingHit, impactVelocity, _movement.WalkableSlopeAngle))
             {
                 TranslateTo(_state.AnchorPosition);
                 AlignVisual(false);
@@ -226,7 +234,7 @@ namespace Portfolio.Locomotion.Spline
                 return;
             }
 
-            _cachedTransform.Translate(motion, Space.World);
+            _cachedTransform.Translate(resolvedMotion, Space.World);
             _state.AnchorPosition = _cachedTransform.position;
             AlignVisual(true);
         }
@@ -269,7 +277,7 @@ namespace Portfolio.Locomotion.Spline
             _cachedTransform.Translate(delta, Space.World);
         }
 
-        private void CleanupEvents()
+        private void UnsubscribeEvents()
         {
         }
 
@@ -292,6 +300,11 @@ namespace Portfolio.Locomotion.Spline
             if (_groundConstraint == null)
             {
                 _groundConstraint = GetComponent<SplineGroundConstraint2D>();
+            }
+
+            if (_collisionResolver == null)
+            {
+                _collisionResolver = GetComponent<SimulatedCollisionResolver2D>();
             }
         }
 #endif
