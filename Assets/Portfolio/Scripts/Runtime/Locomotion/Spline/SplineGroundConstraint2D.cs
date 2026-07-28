@@ -30,11 +30,39 @@ namespace Portfolio.Locomotion.Spline
 
         #region Unity
 
+        private void Start()
+        {
+            Initialize();
+        }
+
         #endregion
 
         //------------------------------- Initialization Methods -------------------------------//
 
         #region Initialization
+
+        private void Initialize()
+        {
+            InitializeModules();
+            InitializeComponents();
+            InitializeEvents();
+        }
+
+        private void InitializeModules()
+        {
+        }
+
+        private void InitializeComponents()
+        {
+            if (_groundProbe == null)
+            {
+                _groundProbe = GetComponent<SplineGroundProbe2D>();
+            }
+        }
+
+        private void InitializeEvents()
+        {
+        }
 
         #endregion
 
@@ -66,37 +94,62 @@ namespace Portfolio.Locomotion.Spline
             state.Falling = !state.Rising;
         }
 
-        public void ConstrainAtDistance(SplineLocomotionState state, Transform anchor, float walkableSlopeAngle)
+        public void ConstrainAtDistance(SplineLocomotionState state, Transform anchor, float walkableSlopeAngle, SimulatedCollisionResolver2D collisionResolver)
         {
             float previousDistance = state.PathDistance;
-            float distance = _path.ClampDistance(previousDistance + state.TangentialGroundSpeed * Time.fixedDeltaTime);
+            float targetDistance = _path.ClampDistance(previousDistance + state.TangentialGroundSpeed * Time.fixedDeltaTime);
 
-            if ((distance <= 0f && state.TangentialGroundSpeed < 0f) || (distance >= _path.TotalLength && state.TangentialGroundSpeed > 0f))
+            if ((targetDistance <= 0f && state.TangentialGroundSpeed < 0f) || (targetDistance >= _path.TotalLength && state.TangentialGroundSpeed > 0f))
             {
                 state.TangentialGroundSpeed = 0f;
             }
 
-            SplinePathSample2D sample = _path.Evaluate(distance);
+            float travelDistance = Mathf.Abs(targetDistance - previousDistance);
+            int stepCount = Mathf.Max(1, Mathf.CeilToInt(travelDistance / collisionResolver.MaximumSplineSweepStep));
+            float safePathDistance = previousDistance;
+            Vector2 safePosition = anchor.position;
+            bool blocked = false;
+
+            for (int step = 1; step <= stepCount; step++)
+            {
+                float stepDistance = Mathf.Lerp(previousDistance, targetDistance, step / (float)stepCount);
+                SplinePathSample2D stepSample = _path.Evaluate(stepDistance);
+                Vector2 intendedDisplacement = stepSample.Position - safePosition;
+                Vector2 velocity = intendedDisplacement / Mathf.Max(Time.fixedDeltaTime, 0.0001f);
+                Vector2 resolvedDisplacement = collisionResolver.Resolve(safePosition, intendedDisplacement, ref velocity, out RaycastHit2D hit);
+                safePosition += resolvedDisplacement;
+
+                if (hit.collider != null || resolvedDisplacement.sqrMagnitude + 0.000001f < intendedDisplacement.sqrMagnitude)
+                {
+                    float fraction = intendedDisplacement.sqrMagnitude > 0.000001f
+                        ? Mathf.Clamp01(resolvedDisplacement.magnitude / intendedDisplacement.magnitude)
+                        : 0f;
+                    safePathDistance = Mathf.Lerp(safePathDistance, stepDistance, fraction);
+                    blocked = true;
+                    break;
+                }
+
+                safePathDistance = stepDistance;
+            }
+
+            SplinePathSample2D sample = _path.Evaluate(safePathDistance);
             ApplySample(state, sample);
+            state.AnchorPosition = safePosition;
             ApplySlopeClassification(state, walkableSlopeAngle);
             state.Grounded = true;
             state.Rising = false;
             state.Falling = false;
-            TranslateTo(anchor, sample.Position);
+
+            if (blocked)
+            {
+                state.TangentialGroundSpeed = 0f;
+            }
+
+            TranslateTo(anchor, safePosition);
         }
 
-        public bool TryLand(SplineLocomotionState state, Vector2 previousPosition, Vector2 proposedPosition, float walkableSlopeAngle)
+        public bool TryLand(SplineLocomotionState state, RaycastHit2D hit, Vector2 impactVelocity, float walkableSlopeAngle)
         {
-            if (state.AirborneVelocity.y > 0f)
-            {
-                return false;
-            }
-
-            if (_groundProbe == null || !_groundProbe.TryGetLandingHit(previousPosition, proposedPosition, out RaycastHit2D hit))
-            {
-                return false;
-            }
-
             SplinePathSample2D sample = _path.FindNearest(hit.point);
 
             if (Vector2.Distance(sample.Position, hit.point) > _maximumLandingSnapDistance)
@@ -106,7 +159,7 @@ namespace Portfolio.Locomotion.Spline
 
             ApplySample(state, sample);
             ApplySlopeClassification(state, walkableSlopeAngle);
-            state.TangentialGroundSpeed = Vector2.Dot(state.AirborneVelocity, sample.Tangent);
+            state.TangentialGroundSpeed = Vector2.Dot(impactVelocity, sample.Tangent);
             state.AirborneVelocity = Vector2.zero;
             state.Grounded = true;
             state.Rising = false;

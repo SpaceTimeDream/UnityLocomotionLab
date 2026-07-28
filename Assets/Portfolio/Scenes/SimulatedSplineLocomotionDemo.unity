@@ -707,6 +707,7 @@ GameObject:
   - component: {fileID: 2105}
   - component: {fileID: 2106}
   - component: {fileID: 2107}
+  - component: {fileID: 2108}
   m_Layer: 0
   m_Name: SimulatedPlayerCapsule
   m_TagString: Untagged
@@ -734,6 +735,7 @@ MonoBehaviour:
   _movement: {fileID: 2103}
   _jump: {fileID: 2104}
   _groundConstraint: {fileID: 2106}
+  _collisionResolver: {fileID: 2108}
   _state:
     _controlEnabled: 1
     _grounded: 0
@@ -806,6 +808,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d059e5c96907474c806f7702b7707533, type: 3}
   _gameInput: {fileID: 1948012447}
   _controller: {fileID: 2102}
+--- !u!114 &2108
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_GameObject: {fileID: 2100}
+  m_Enabled: 1
+  m_Script: {fileID: 11500000, guid: 73d94482e9114b14968332c73761d625, type: 3}
+  _collisionLayers: {serializedVersion: 2, m_Bits: 1}
+  _collisionSkin: 0.03
+  _bodyWidth: 0.72
+  _bodyHeight: 1.68
+  _bodyCenterOffset: {x: 0, y: 0.84}
+  _rayInset: 0.04
+  _horizontalRayCount: 3
+  _verticalRayCount: 3
+  _maximumResolutionIterations: 3
+  _drawCollisionGizmos: 0
 --- !u!1 &2110
 GameObject:
   m_ObjectHideFlags: 0
