@@ -367,6 +367,9 @@ public class RigidbodyLocomotionControllerEditor : Editor
         EditorGUILayout.LabelField("Movement", EditorStyles.boldLabel);
         EditorGUILayout.FloatField("Movement Input", _controller.MovementInput);
         EditorGUILayout.FloatField("Facing Direction", _controller.FacingDirection);
+        EditorGUILayout.FloatField(
+            "Steep Block Direction",
+            _controller.SteepSlopeBlockDirection);
         EditorGUILayout.Vector2Field("Velocity", _controller.Velocity);
         EditorGUILayout.FloatField("Speed", _controller.Speed);
         EditorGUILayout.FloatField("Grounded Time", _controller.SurfaceProbe.GroundedTime);

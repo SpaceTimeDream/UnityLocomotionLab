@@ -89,11 +89,31 @@ namespace Portfolio.Locomotion.Rigidbody
             Vector2 originLeft = new Vector2(bounds.min.x + _probeInset, bounds.center.y);
             Vector2 originRight = new Vector2(bounds.max.x - _probeInset, bounds.center.y);
 
-            RaycastHit2D bestHit = default;
-            bool hasHit = false;
-            hasHit |= TryGetBestHit(originCenter, rayLength, capsuleCollider, ref bestHit);
-            hasHit |= TryGetBestHit(originLeft, rayLength, capsuleCollider, ref bestHit);
-            hasHit |= TryGetBestHit(originRight, rayLength, capsuleCollider, ref bestHit);
+            RaycastHit2D bestWalkableHit = default;
+            RaycastHit2D bestSteepHit = default;
+            CollectBestSupportHits(
+                originCenter,
+                rayLength,
+                capsuleCollider,
+                ref bestWalkableHit,
+                ref bestSteepHit);
+            CollectBestSupportHits(
+                originLeft,
+                rayLength,
+                capsuleCollider,
+                ref bestWalkableHit,
+                ref bestSteepHit);
+            CollectBestSupportHits(
+                originRight,
+                rayLength,
+                capsuleCollider,
+                ref bestWalkableHit,
+                ref bestSteepHit);
+
+            RaycastHit2D bestHit = bestWalkableHit.collider != null
+                ? bestWalkableHit
+                : bestSteepHit;
+            bool hasHit = bestHit.collider != null;
 
             if (!hasHit)
             {
@@ -132,14 +152,17 @@ namespace Portfolio.Locomotion.Rigidbody
             return tangent.y > 0.01f;
         }
 
-        public bool HasNearbySteepSlope(CapsuleCollider2D capsuleCollider, float facingDirection, float distance)
+        public bool HasNearbySteepSlope(
+            CapsuleCollider2D capsuleCollider,
+            float horizontalDirection,
+            float distance)
         {
             if (!_initialized)
             {
                 Initialize();
             }
 
-            Vector2 direction = Vector2.right * Mathf.Sign(facingDirection);
+            Vector2 direction = Vector2.right * Mathf.Sign(horizontalDirection);
             int hitCount = capsuleCollider.Cast(direction, _contactFilter, _hits, distance);
 
             for (int i = 0; i < hitCount; i++)
@@ -184,10 +207,14 @@ namespace Portfolio.Locomotion.Rigidbody
             state.SetSurface(false, false, false, Vector2.up, 0f);
         }
 
-        private bool TryGetBestHit(Vector2 origin, float distance, Collider2D ignoredCollider, ref RaycastHit2D bestHit)
+        private void CollectBestSupportHits(
+            Vector2 origin,
+            float distance,
+            Collider2D ignoredCollider,
+            ref RaycastHit2D bestWalkableHit,
+            ref RaycastHit2D bestSteepHit)
         {
             int hitCount = Physics2D.Raycast(origin, Vector2.down, _contactFilter, _hits, distance);
-            bool foundHit = bestHit.collider != null;
 
             for (int i = 0; i < hitCount; i++)
             {
@@ -203,14 +230,24 @@ namespace Portfolio.Locomotion.Rigidbody
                     continue;
                 }
 
-                if (!foundHit || hit.distance < bestHit.distance)
-                {
-                    bestHit = hit;
-                    foundHit = true;
-                }
-            }
+                float slopeAngle = Vector2.Angle(hit.normal, Vector2.up);
 
-            return foundHit;
+                if (slopeAngle <= _maximumWalkableSlopeAngle)
+                {
+                    SetCloserHit(hit, ref bestWalkableHit);
+                    continue;
+                }
+
+                SetCloserHit(hit, ref bestSteepHit);
+            }
+        }
+
+        private void SetCloserHit(RaycastHit2D hit, ref RaycastHit2D bestHit)
+        {
+            if (bestHit.collider == null || hit.distance < bestHit.distance)
+            {
+                bestHit = hit;
+            }
         }
 
 #if UNITY_EDITOR

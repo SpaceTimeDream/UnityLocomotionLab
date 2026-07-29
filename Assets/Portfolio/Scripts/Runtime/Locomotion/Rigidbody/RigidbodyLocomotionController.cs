@@ -60,6 +60,7 @@ namespace Portfolio.Locomotion.Rigidbody
         private Vector2 _cachedPausedVelocity;
         private float _cachedPausedGravityScale;
         private float _horizontalDistancePerFixedFrame;
+        private float _steepSlopeBlockDirection;
 
         public UnityEngine.Rigidbody2D Body => _body;
         public CapsuleCollider2D MainCollider => _capsuleCollider;
@@ -76,6 +77,7 @@ namespace Portfolio.Locomotion.Rigidbody
         public float Speed => Velocity.magnitude;
         public float VerticalVelocity => Velocity.y;
         public float HorizontalDistancePerFixedFrame => _horizontalDistancePerFixedFrame;
+        public float SteepSlopeBlockDirection => _steepSlopeBlockDirection;
         public bool IsMovementFrozen => _movementFrozen;
 
         public event Action<float> DirectionChanged;
@@ -282,6 +284,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _jump.ResetRuntimeState();
             _externalForces.ClearRuntimeState();
             _movingPlatforms.ClearRuntimeState();
+            _steepSlopeBlockDirection = 0f;
             ZeroVelocity();
         }
 
@@ -341,7 +344,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _jump.UpdateRuntimeState(_body, _state);
             _movingPlatforms.Track(_state, _surfaceProbe.SurfaceCollider, _body);
 
-            bool blockMovementIntoSteepSlope = ShouldBlockMovementIntoSteepSlope();
+            _steepSlopeBlockDirection = GetSteepSlopeBlockDirection();
             _state.SetSliding(false);
             _movement.ApplyMovement(
                 _body,
@@ -349,11 +352,10 @@ namespace Portfolio.Locomotion.Rigidbody
                 _surfaceProbe,
                 _externalForces,
                 _movementInput,
-                blockMovementIntoSteepSlope,
-                _facingDirection,
+                _steepSlopeBlockDirection,
                 _jump.IsInJumpAscentState);
 
-            if (_jump.ApplyJump(_body, _state, blockMovementIntoSteepSlope))
+            if (_jump.ApplyJump(_body, _state, _steepSlopeBlockDirection))
             {
                 JumpTriggered?.Invoke();
             }
@@ -447,21 +449,49 @@ namespace Portfolio.Locomotion.Rigidbody
             _visualRoot.localEulerAngles = eulerAngles;
         }
 
-        private bool ShouldBlockMovementIntoSteepSlope()
+        private float GetSteepSlopeBlockDirection()
         {
-            float movementDirection = Mathf.Abs(_movementInput) > 0.01f
-                ? _movementInput
-                : _body.linearVelocity.x;
+            float inputDirection = GetDirection(_movementInput);
 
-            if (movementDirection * _facingDirection <= 0.01f)
+            if (HasNearbySteepSlope(inputDirection))
+            {
+                return inputDirection;
+            }
+
+            float velocityDirection = GetDirection(_body.linearVelocity.x);
+
+            if (!Mathf.Approximately(velocityDirection, inputDirection) &&
+                HasNearbySteepSlope(velocityDirection))
+            {
+                return velocityDirection;
+            }
+
+            if (Mathf.Approximately(inputDirection, 0f) &&
+                Mathf.Approximately(velocityDirection, 0f) &&
+                HasNearbySteepSlope(_facingDirection))
+            {
+                return _facingDirection;
+            }
+
+            return 0f;
+        }
+
+        private bool HasNearbySteepSlope(float direction)
+        {
+            if (Mathf.Approximately(direction, 0f))
             {
                 return false;
             }
 
             return _surfaceProbe.HasNearbySteepSlope(
                 _capsuleCollider,
-                _facingDirection,
+                direction,
                 _steepSlopeJumpCheckDistance);
+        }
+
+        private float GetDirection(float value)
+        {
+            return Mathf.Abs(value) > 0.01f ? Mathf.Sign(value) : 0f;
         }
 
         private void ApplyGravity()
