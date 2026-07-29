@@ -16,7 +16,9 @@ The simulated movement module includes explicit ground, slope and air decelerati
 
 `LocomotionComparisonDemo` contains both implementations on one 80-unit test course. The green player uses Rigidbody locomotion and the orange player uses simulated translate locomotion.
 
-The debug button switches the active implementation at the current collider-foot position. The runtime panel shows velocity, grounded state, slope angle, jump state and locomotion flags. A color-coded prompt identifies the active test section.
+The `SwitchPhysics` action switches the active implementation at the current collider-foot position. The Game view presents controls in a dedicated left panel, a color-coded test prompt in a separate responsive banner and a collapsible physics summary on the right. A world-space label above the active player identifies the current physics model.
+
+The collapsed physics summary shows the active model, surface, jump state and velocity. Expanding it adds the motion method, collision method, surface normal, input and complete locomotion flags.
 
 The course includes:
 
@@ -40,5 +42,5 @@ The finished scenes and player prefabs are committed with the project. Open a sc
 
 - Move: `A` / `D` or gamepad left stick
 - Jump: `Space` or gamepad south button
+- Switch physics: `Tab` or gamepad select
 - Pause: `Escape` or gamepad start
-- Comparison scene: use the top-left debug button to switch implementations

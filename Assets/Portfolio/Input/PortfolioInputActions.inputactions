@@ -22,6 +22,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "SwitchPhysics",
+                    "type": "Button",
+                    "id": "4386a946-4b62-4fe1-9faa-8205cf8c27d3",
+                    "expectedControlType": "Button",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -110,6 +119,28 @@
                     "processors": "",
                     "groups": "Gamepad",
                     "action": "Jump",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "1e6e9910-dce0-4b47-a264-55d3f7972dd9",
+                    "path": "<Keyboard>/tab",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "SwitchPhysics",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "fb688dfb-1d9b-46f2-a7bc-61b0188814d2",
+                    "path": "<Gamepad>/select",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Gamepad",
+                    "action": "SwitchPhysics",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

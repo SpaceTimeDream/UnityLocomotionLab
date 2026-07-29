@@ -1565,15 +1565,21 @@ MonoBehaviour:
   _rigidbodyController: {fileID: 2001132992}
   _simulatedController: {fileID: 2102}
   _cameraFollow: {fileID: 519420033}
+  _gameInput: {fileID: 1948012447}
   _startWithRigidbody: 1
-  _showDebugButton: 1
-  _buttonRect: {x: 16, y: 16, width: 420, height: 44}
   _rigidbodyColor: {r: 0.15, g: 1, b: 0, a: 1}
   _simulatedColor: {r: 1, g: 0.55, b: 0.2, a: 1}
-  _showRuntimePanel: 1
+  _showControlsPanel: 1
+  _showPhysicsSummary: 1
   _showCoursePrompt: 1
-  _runtimePanelRect: {x: 16, y: 68, width: 420, height: 112}
-  _coursePromptRect: {x: 452, y: 16, width: 650, height: 44}
+  _showPlayerPhysicsLabel: 1
+  _physicsSummaryStartsExpanded: 0
+  _screenMargin: 16
+  _controlsPanelWidth: 320
+  _physicsPanelWidth: 370
+  _playerLabelWidth: 220
+  _playerLabelHeight: 30
+  _playerLabelWorldOffset: {x: 0, y: 0.3}
   _drawCourseGizmos: 1
   _courseGizmoY: 4.75
   _courseGizmoHeight: 0.5
