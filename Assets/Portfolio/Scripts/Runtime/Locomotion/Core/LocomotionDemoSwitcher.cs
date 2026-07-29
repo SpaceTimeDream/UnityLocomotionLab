@@ -119,7 +119,7 @@ namespace Portfolio.Locomotion.Core
 
             Transform outgoingPlayer = GetPlayerTransform(!useRigidbody);
             CapsuleCollider2D outgoingCollider = GetPlayerCollider(!useRigidbody);
-            Vector3 transferPosition = GetTransferPosition(outgoingPlayer, outgoingCollider);
+            Vector3 transferPositionVector = GetTransferPosition(outgoingPlayer, outgoingCollider);
 
             SetPlayerControl(!useRigidbody, false);
             SetPlayerActive(!useRigidbody, false);
@@ -130,7 +130,7 @@ namespace Portfolio.Locomotion.Core
 
             if (transferPosition)
             {
-                AlignPlayerToTransferPosition(incomingPlayer, incomingCollider, transferPosition);
+                AlignPlayerToTransferPosition(incomingPlayer, incomingCollider, transferPositionVector);
             }
 
             ResetPlayer(useRigidbody);
