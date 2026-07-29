@@ -1,6 +1,6 @@
 # Locomotion Demos
 
-The project contains two parallel movement showcases built from the same open SpriteShape terrain.
+The project contains two focused movement showcases and one shared comparison scene.
 
 ## Rigidbody2D
 
@@ -12,12 +12,28 @@ The project contains two parallel movement showcases built from the same open Sp
 
 The simulated movement module includes explicit ground, slope and air deceleration. Its collision resolver stops grounded motion at steep surfaces without an accumulating push-back.
 
+## Comparison scene
+
+`LocomotionComparisonDemo` contains both implementations on one longer test course. The green player uses Rigidbody locomotion and the orange player uses simulated translate locomotion.
+
+The debug button switches the active implementation at the current collider-foot position. The course includes:
+
+- A long acceleration and braking runway
+- Gentle uphill and downhill slopes
+- A crest and valley
+- Steep uphill and downhill transitions
+- A low ceiling
+- A jumpable step
+
+The orthographic camera follows only the active player's world position. Player rotation and the `0` / `180` Y-axis facing flip do not affect the camera.
+
 ## Open the demos
 
-The finished scenes and player prefabs are committed with the project. Open either scene directly in Unity `6000.5.4f1`; no generation step is required.
+The finished scenes and player prefabs are committed with the project. Open a scene directly in Unity `6000.5.4f1`; no generation step is required.
 
 ## Controls
 
 - Move: `A` / `D` or gamepad left stick
 - Jump: `Space` or gamepad south button
 - Pause: `Escape` or gamepad start
+- Comparison scene: use the top-left debug button to switch implementations
