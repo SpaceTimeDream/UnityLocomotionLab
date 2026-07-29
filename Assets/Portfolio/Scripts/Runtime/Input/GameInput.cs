@@ -42,6 +42,7 @@ namespace Portfolio.Input
         private InputActionMap _systemMap;
         private InputAction _moveAction;
         private InputAction _jumpAction;
+        private InputAction _switchPhysicsAction;
         private InputAction _pauseAction;
         private Vector2 _movementValue;
         private string _device = KEYBOARD;
@@ -63,12 +64,16 @@ namespace Portfolio.Input
         public delegate void JumpCanceledDelegate(InputAction.CallbackContext context);
         public JumpCanceledDelegate jumpCanceledEvent;
 
+        public delegate void SwitchPhysicsDelegate(InputAction.CallbackContext context);
+        public SwitchPhysicsDelegate switchPhysicsEvent;
+
         public delegate void PauseDelegate(InputAction.CallbackContext context);
         public PauseDelegate pauseEvent;
 
         public event Action<Vector2> MovementValueChanged;
         public event Action JumpPressed;
         public event Action JumpReleased;
+        public event Action PhysicsSwitchRequested;
         public event Action PauseRequested;
 
         #endregion
@@ -186,6 +191,7 @@ namespace Portfolio.Input
             _systemMap = _inputActions.FindActionMap("System", false);
             _moveAction = _gameplayMap?.FindAction("Move", false);
             _jumpAction = _gameplayMap?.FindAction("Jump", false);
+            _switchPhysicsAction = _gameplayMap?.FindAction("SwitchPhysics", false);
             _pauseAction = _systemMap?.FindAction("Pause", false);
         }
 
@@ -252,6 +258,21 @@ namespace Portfolio.Input
             }
         }
 
+        public void BindPhysicsSwitchAction(bool value)
+        {
+            if (_switchPhysicsAction == null)
+            {
+                return;
+            }
+
+            _switchPhysicsAction.started -= SwitchPhysicsStartedHandler;
+
+            if (value)
+            {
+                _switchPhysicsAction.started += SwitchPhysicsStartedHandler;
+            }
+        }
+
         public void BindGamePauseAction(bool value)
         {
             if (_pauseAction == null)
@@ -271,6 +292,7 @@ namespace Portfolio.Input
         {
             BindPlayerMoveAction(value);
             BindPlayerJumpAction(value);
+            BindPhysicsSwitchAction(value);
             _gameControlsBound = value;
         }
 
@@ -308,10 +330,12 @@ namespace Portfolio.Input
             moveEvent = null;
             jumpEvent = null;
             jumpCanceledEvent = null;
+            switchPhysicsEvent = null;
             pauseEvent = null;
             MovementValueChanged = null;
             JumpPressed = null;
             JumpReleased = null;
+            PhysicsSwitchRequested = null;
             PauseRequested = null;
         }
 
@@ -363,13 +387,15 @@ namespace Portfolio.Input
                 _systemMap != null &&
                 _moveAction != null &&
                 _jumpAction != null &&
+                _switchPhysicsAction != null &&
                 _pauseAction != null)
             {
                 return true;
             }
 
             Debug.LogError(
-                "GameInput requires Gameplay/Move, Gameplay/Jump and System/Pause actions.",
+                "GameInput requires Gameplay/Move, Gameplay/Jump, " +
+                "Gameplay/SwitchPhysics and System/Pause actions.",
                 this);
             return false;
         }
@@ -468,6 +494,19 @@ namespace Portfolio.Input
 
             jumpCanceledEvent?.Invoke(context);
             JumpReleased?.Invoke();
+        }
+
+        private void SwitchPhysicsStartedHandler(InputAction.CallbackContext context)
+        {
+            SetCurrentDevice(context);
+
+            if (!ShouldProcessPlayerAction())
+            {
+                return;
+            }
+
+            switchPhysicsEvent?.Invoke(context);
+            PhysicsSwitchRequested?.Invoke();
         }
 
         private void PauseStartedHandler(InputAction.CallbackContext context)
