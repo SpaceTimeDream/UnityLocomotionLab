@@ -77,7 +77,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 Initialize();
             }
 
-            if (ignoreGrounding || body.linearVelocity.y > _risingGroundedVelocityThreshold)
+            if (ignoreGrounding)
             {
                 ClearSurface(state);
                 return;
@@ -116,6 +116,12 @@ namespace Portfolio.Locomotion.Rigidbody
             bool hasHit = bestHit.collider != null;
 
             if (!hasHit)
+            {
+                ClearSurface(state);
+                return;
+            }
+
+            if (IsSeparatingFromSurface(body.linearVelocity, bestHit.normal))
             {
                 ClearSurface(state);
                 return;
@@ -248,6 +254,11 @@ namespace Portfolio.Locomotion.Rigidbody
             {
                 bestHit = hit;
             }
+        }
+
+        private bool IsSeparatingFromSurface(Vector2 velocity, Vector2 surfaceNormal)
+        {
+            return Vector2.Dot(velocity, surfaceNormal) > _risingGroundedVelocityThreshold;
         }
 
 #if UNITY_EDITOR
