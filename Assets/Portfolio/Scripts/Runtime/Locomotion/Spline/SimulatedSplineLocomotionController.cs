@@ -60,6 +60,10 @@ namespace Portfolio.Locomotion.Spline
         [Header("DEMO PARAMETERS")]
         [SerializeField] private float _demoResetY = -8f;
 
+        [Header("DEBUG PARAMETERS")]
+        [SerializeField] private bool _drawSelectedGizmos = true;
+        [SerializeField] private float _velocityGizmoScale = 0.12f;
+
         private Transform _cachedTransform;
         private Vector2 _velocity;
         private Vector2 _cachedPausedVelocity;
@@ -69,6 +73,13 @@ namespace Portfolio.Locomotion.Spline
         private float _facingDirection = 1f;
         private float _startingVisualZRotation;
         private float _horizontalDistancePerFixedFrame;
+        private Vector2 _lastDebugOrigin;
+        private Vector2 _lastIntendedDisplacement;
+        private Vector2 _lastResolvedDisplacement;
+        private Vector2 _lastGroundSnapDisplacement;
+        private RaycastHit2D _lastBlockingHit;
+        private RaycastHit2D _lastGroundSnapHit;
+        private bool _movementBlockedBySteepSlope;
 
         public Rigidbody2D Body => _body;
         public CapsuleCollider2D MainCollider => _capsuleCollider;
@@ -83,6 +94,9 @@ namespace Portfolio.Locomotion.Spline
         public float FacingDirection => _facingDirection;
         public float HorizontalDistancePerFixedFrame => _horizontalDistancePerFixedFrame;
         public bool IsMovementFrozen => _movementFrozen;
+        public bool MovementBlockedBySteepSlope => _movementBlockedBySteepSlope;
+        public Vector2 LastIntendedDisplacement => _lastIntendedDisplacement;
+        public Vector2 LastResolvedDisplacement => _lastResolvedDisplacement;
 
         public event Action<float> DirectionChanged;
         public event Action JumpTriggered;
@@ -297,6 +311,7 @@ namespace Portfolio.Locomotion.Spline
             _state.ResetRuntimeState();
             _movement.ResetRuntimeState();
             _jump.ResetRuntimeState();
+            ResetDebugState();
             ZeroVelocity();
         }
 
@@ -347,6 +362,7 @@ namespace Portfolio.Locomotion.Spline
 
             bool blockMovementIntoSteepSlope =
                 ShouldBlockMovementIntoSteepSlope();
+            _movementBlockedBySteepSlope = blockMovementIntoSteepSlope;
             _state.SetSliding(false);
             _movement.ApplyMovement(
                 ref _velocity,
@@ -368,13 +384,6 @@ namespace Portfolio.Locomotion.Spline
 
             ApplyGravity(deltaTime);
             Vector2 intendedDisplacement = _velocity * deltaTime;
-
-            if (_state.Grounded && !_jump.IsInJumpAscentState)
-            {
-                intendedDisplacement +=
-                    Vector2.down * _surfaceProbe.GroundSnapDistance;
-            }
-
             Vector2 resolvedDisplacement = _collisionResolver.Resolve(
                 previousPosition,
                 _capsuleCollider,
@@ -383,8 +392,13 @@ namespace Portfolio.Locomotion.Spline
                 _state.Grounded,
                 _surfaceProbe.MaximumWalkableSlopeAngle,
                 out RaycastHit2D blockingHit);
+            _lastDebugOrigin = previousPosition;
+            _lastIntendedDisplacement = intendedDisplacement;
+            _lastResolvedDisplacement = resolvedDisplacement;
+            _lastBlockingHit = blockingHit;
             TranslateBy(resolvedDisplacement);
             ApplyResolvedSurface(blockingHit, intendedDisplacement);
+            ApplyGroundSnap();
             AlignVisual();
             _state.SetVerticalMotion(_velocity.y);
             _state.RefreshPhysicsState(
@@ -508,6 +522,43 @@ namespace Portfolio.Locomotion.Spline
             _surfaceProbe.ApplySurfaceHit(blockingHit, _state);
         }
 
+        private void ApplyGroundSnap()
+        {
+            _lastGroundSnapDisplacement = Vector2.zero;
+            _lastGroundSnapHit = default;
+
+            if (!_state.Grounded || _jump.IsInJumpAscentState)
+            {
+                return;
+            }
+
+            float castDistance =
+                _surfaceProbe.GroundSnapDistance +
+                _collisionResolver.CollisionSkin;
+
+            if (!_surfaceProbe.TryGetGroundHit(
+                _capsuleCollider,
+                castDistance,
+                out RaycastHit2D groundHit) ||
+                !_surfaceProbe.IsWalkableSurface(groundHit.normal))
+            {
+                return;
+            }
+
+            _lastGroundSnapHit = groundHit;
+            float snapDistance = Mathf.Max(
+                0f,
+                groundHit.distance - _collisionResolver.CollisionSkin);
+
+            if (snapDistance > 0f)
+            {
+                _lastGroundSnapDisplacement = Vector2.down * snapDistance;
+                TranslateBy(_lastGroundSnapDisplacement);
+            }
+
+            _surfaceProbe.ApplySurfaceHit(groundHit, _state);
+        }
+
         private void AlignVisual()
         {
             if (_visualRoot == null)
@@ -534,6 +585,7 @@ namespace Portfolio.Locomotion.Spline
         private void TranslateBy(Vector2 displacement)
         {
             _cachedTransform.Translate(displacement, Space.World);
+            Physics2D.SyncTransforms();
         }
 
         private void TranslateTo(Vector2 position)
@@ -570,8 +622,104 @@ namespace Portfolio.Locomotion.Spline
             ReleaseJump();
         }
 
+        private void ResetDebugState()
+        {
+            _lastDebugOrigin = _cachedTransform != null
+                ? (Vector2)_cachedTransform.position
+                : Vector2.zero;
+            _lastIntendedDisplacement = Vector2.zero;
+            _lastResolvedDisplacement = Vector2.zero;
+            _lastGroundSnapDisplacement = Vector2.zero;
+            _lastBlockingHit = default;
+            _lastGroundSnapHit = default;
+            _movementBlockedBySteepSlope = false;
+        }
+
 #if UNITY_EDITOR
         //------------------------------- Editor -------------------------------//
+
+        private void OnDrawGizmosSelected()
+        {
+            if (!_drawSelectedGizmos)
+            {
+                return;
+            }
+
+            CapsuleCollider2D capsuleCollider = _capsuleCollider != null
+                ? _capsuleCollider
+                : GetComponent<CapsuleCollider2D>();
+
+            if (capsuleCollider == null)
+            {
+                return;
+            }
+
+            Bounds bounds = capsuleCollider.bounds;
+            Vector3 origin = Application.isPlaying
+                ? (Vector3)_lastDebugOrigin
+                : bounds.center;
+            origin.y = bounds.center.y;
+
+            Gizmos.color = new Color(1f, 0.55f, 0.2f, 1f);
+            Gizmos.DrawWireCube(bounds.center, bounds.size);
+
+            Gizmos.color = Color.cyan;
+            Gizmos.DrawLine(
+                origin,
+                origin + (Vector3)(_velocity * _velocityGizmoScale));
+
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawLine(
+                origin,
+                origin + (Vector3)_lastIntendedDisplacement);
+
+            Gizmos.color = Color.green;
+            Gizmos.DrawLine(
+                origin,
+                origin + (Vector3)_lastResolvedDisplacement);
+
+            Vector3 groundOrigin = new Vector3(
+                bounds.center.x,
+                bounds.min.y,
+                bounds.center.z);
+            Gizmos.color = Color.blue;
+            Gizmos.DrawLine(
+                groundOrigin,
+                groundOrigin + (Vector3)_state.SurfaceNormal);
+
+            Gizmos.color = _movementBlockedBySteepSlope
+                ? Color.red
+                : new Color(1f, 0.6f, 0f, 1f);
+            Gizmos.DrawLine(
+                bounds.center,
+                bounds.center +
+                Vector3.right * _facingDirection * _steepSlopeCheckDistance);
+
+            DrawCollisionHitGizmo(_lastBlockingHit, Color.red);
+            DrawCollisionHitGizmo(_lastGroundSnapHit, Color.magenta);
+
+            if (_lastGroundSnapDisplacement.sqrMagnitude > 0f)
+            {
+                Gizmos.color = Color.magenta;
+                Gizmos.DrawLine(
+                    origin + (Vector3)_lastResolvedDisplacement,
+                    origin +
+                    (Vector3)(_lastResolvedDisplacement +
+                    _lastGroundSnapDisplacement));
+            }
+        }
+
+        private void DrawCollisionHitGizmo(RaycastHit2D hit, Color color)
+        {
+            if (hit.collider == null)
+            {
+                return;
+            }
+
+            Gizmos.color = color;
+            Gizmos.DrawSphere(hit.point, 0.06f);
+            Gizmos.DrawLine(hit.point, hit.point + hit.normal * 0.5f);
+        }
 
         private void OnValidate()
         {
@@ -583,6 +731,7 @@ namespace Portfolio.Locomotion.Spline
             _maximumFallSpeed = Mathf.Max(0f, _maximumFallSpeed);
             _steepSlopeCheckDistance = Mathf.Max(0.01f, _steepSlopeCheckDistance);
             _groundedAlignmentSpeed = Mathf.Max(0f, _groundedAlignmentSpeed);
+            _velocityGizmoScale = Mathf.Max(0f, _velocityGizmoScale);
             _movement?.Validate();
             _jump?.Validate();
             _surfaceProbe?.Validate();

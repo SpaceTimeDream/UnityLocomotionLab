@@ -26,6 +26,25 @@ namespace Portfolio.Locomotion.Core
         [SerializeField] private Color _rigidbodyColor = new Color(0.15f, 1f, 0f, 1f);
         [SerializeField] private Color _simulatedColor = new Color(1f, 0.55f, 0.2f, 1f);
 
+        [Header("PRESENTATION PARAMETERS")]
+        [SerializeField] private bool _showRuntimePanel = true;
+        [SerializeField] private bool _showCoursePrompt = true;
+        [SerializeField] private Rect _runtimePanelRect =
+            new Rect(16f, 68f, 420f, 112f);
+        [SerializeField] private Rect _coursePromptRect =
+            new Rect(452f, 16f, 650f, 44f);
+
+        [Header("COURSE GIZMO PARAMETERS")]
+        [SerializeField] private bool _drawCourseGizmos = true;
+        [SerializeField] private float _courseGizmoY = 4.75f;
+        [SerializeField] private float _courseGizmoHeight = 0.5f;
+        [SerializeField] private Vector2 _runwayRange = new Vector2(-32f, -24f);
+        [SerializeField] private Vector2 _rollingSlopeRange = new Vector2(-24f, -8f);
+        [SerializeField] private Vector2 _uphillJumpRange = new Vector2(-8f, 8f);
+        [SerializeField] private Vector2 _lowCeilingRange = new Vector2(10f, 16f);
+        [SerializeField] private Vector2 _jumpableStepRange = new Vector2(18f, 25f);
+        [SerializeField] private Vector2 _steepSlopeRange = new Vector2(30f, 40f);
+
         private Transform _activePlayer;
 
         public Transform ActivePlayer => _activePlayer;
@@ -52,6 +71,8 @@ namespace Portfolio.Locomotion.Core
         private void OnGUI()
         {
             DrawSwitchButton();
+            DrawRuntimePanel();
+            DrawCoursePrompt();
         }
 
         #endregion
@@ -119,7 +140,8 @@ namespace Portfolio.Locomotion.Core
 
             Transform outgoingPlayer = GetPlayerTransform(!useRigidbody);
             CapsuleCollider2D outgoingCollider = GetPlayerCollider(!useRigidbody);
-            Vector3 transferPositionVector = GetTransferPosition(outgoingPlayer, outgoingCollider);
+            Vector3 transferPositionVector =
+                GetTransferPosition(outgoingPlayer, outgoingCollider);
 
             SetPlayerControl(!useRigidbody, false);
             SetPlayerActive(!useRigidbody, false);
@@ -130,7 +152,10 @@ namespace Portfolio.Locomotion.Core
 
             if (transferPosition)
             {
-                AlignPlayerToTransferPosition(incomingPlayer, incomingCollider, transferPositionVector);
+                AlignPlayerToTransferPosition(
+                    incomingPlayer,
+                    incomingCollider,
+                    transferPositionVector);
             }
 
             ResetPlayer(useRigidbody);
@@ -278,18 +303,275 @@ namespace Portfolio.Locomotion.Core
                 : "Active: Orange Simulated | Switch to Green Rigidbody";
         }
 
+        private void DrawRuntimePanel()
+        {
+            if (!_initialized || !_showRuntimePanel || !Application.isPlaying)
+            {
+                return;
+            }
+
+            LocomotionState state = GetActiveState();
+
+            if (state == null)
+            {
+                return;
+            }
+
+            GUI.Box(_runtimePanelRect, string.Empty);
+            Rect labelRect = new Rect(
+                _runtimePanelRect.x + 10f,
+                _runtimePanelRect.y + 8f,
+                _runtimePanelRect.width - 20f,
+                _runtimePanelRect.height - 16f);
+            GUI.Label(labelRect, GetRuntimeStatusText(state));
+        }
+
+        private void DrawCoursePrompt()
+        {
+            if (!_initialized ||
+                !_showCoursePrompt ||
+                !Application.isPlaying ||
+                _activePlayer == null)
+            {
+                return;
+            }
+
+            Color previousBackgroundColor = GUI.backgroundColor;
+            GUI.backgroundColor = GetCurrentScenarioColor(_activePlayer.position.x);
+            GUI.Box(
+                _coursePromptRect,
+                GetCurrentScenarioPrompt(_activePlayer.position.x));
+            GUI.backgroundColor = previousBackgroundColor;
+        }
+
+        private LocomotionState GetActiveState()
+        {
+            return _rigidbodyActive
+                ? _rigidbodyController.State
+                : _simulatedController.State;
+        }
+
+        private Vector2 GetActiveVelocity()
+        {
+            return _rigidbodyActive
+                ? _rigidbodyController.Velocity
+                : _simulatedController.Velocity;
+        }
+
+        private string GetRuntimeStatusText(LocomotionState state)
+        {
+            Vector2 velocity = GetActiveVelocity();
+            string implementation = _rigidbodyActive
+                ? "GREEN RIGIDBODY"
+                : "ORANGE SIMULATED";
+            string jumpState = GetActiveJumpState();
+            return
+                $"{implementation}\n" +
+                $"Velocity  X {velocity.x:0.00}  Y {velocity.y:0.00}\n" +
+                $"Grounded {state.Grounded}  Slope {state.SlopeAngle:0.0}°  " +
+                $"Jump {jumpState}\n" +
+                $"State {state.CurrentState}";
+        }
+
+        private string GetActiveJumpState()
+        {
+            if (_rigidbodyActive)
+            {
+                return GetJumpState(
+                    _rigidbodyController.Jump.IsInJumpAscentState,
+                    _rigidbodyController.Jump.IsInAnticipationFrame,
+                    _rigidbodyController.Jump.IsSteepSlopeJumpRestricted,
+                    _rigidbodyController.Jump.HasBufferedJump);
+            }
+
+            return GetJumpState(
+                _simulatedController.Jump.IsInJumpAscentState,
+                _simulatedController.Jump.IsInAnticipationFrame,
+                _simulatedController.Jump.IsSteepSlopeJumpRestricted,
+                _simulatedController.Jump.HasBufferedJump);
+        }
+
+        private string GetJumpState(
+            bool jumping,
+            bool anticipating,
+            bool steepSlopeRestricted,
+            bool buffered)
+        {
+            if (steepSlopeRestricted)
+            {
+                return "STEEP BLOCK";
+            }
+
+            if (anticipating)
+            {
+                return "ANTICIPATION";
+            }
+
+            if (jumping)
+            {
+                return "ASCENDING";
+            }
+
+            return buffered ? "BUFFERED" : "READY";
+        }
+
+        private string GetCurrentScenarioPrompt(float positionX)
+        {
+            if (positionX < _runwayRange.y)
+            {
+                return "RUNWAY — accelerate, release input, and compare stopping distance";
+            }
+
+            if (positionX < _rollingSlopeRange.y)
+            {
+                return "ROLLING SLOPES — stop on each incline without drifting backward";
+            }
+
+            if (positionX < _uphillJumpRange.y)
+            {
+                return "UPHILL JUMP — jump while climbing and preserve upward momentum";
+            }
+
+            if (positionX < _lowCeilingRange.y)
+            {
+                return "CYAN CEILING — verify head collision and early jump release";
+            }
+
+            if (positionX < _jumpableStepRange.y)
+            {
+                return "YELLOW STEP — jump onto or clear the raised obstacle";
+            }
+
+            if (positionX < _steepSlopeRange.y)
+            {
+                return "STEEP END SLOPE — stop before the face and remain free to jump away";
+            }
+
+            return "END PLATFORM — turn around and repeat the course from the right";
+        }
+
+        private Color GetCurrentScenarioColor(float positionX)
+        {
+            if (positionX < _runwayRange.y)
+            {
+                return new Color(0.55f, 0.7f, 1f, 1f);
+            }
+
+            if (positionX < _rollingSlopeRange.y)
+            {
+                return new Color(0.35f, 1f, 0.55f, 1f);
+            }
+
+            if (positionX < _uphillJumpRange.y)
+            {
+                return new Color(0.2f, 0.9f, 1f, 1f);
+            }
+
+            if (positionX < _lowCeilingRange.y)
+            {
+                return Color.cyan;
+            }
+
+            if (positionX < _jumpableStepRange.y)
+            {
+                return new Color(1f, 0.8f, 0.05f, 1f);
+            }
+
+            return positionX < _steepSlopeRange.y
+                ? new Color(1f, 0.25f, 0.2f, 1f)
+                : new Color(0.7f, 0.7f, 0.7f, 1f);
+        }
+
 #if UNITY_EDITOR
         //------------------------------- Editor -------------------------------//
+
+        private void OnDrawGizmos()
+        {
+            if (!_drawCourseGizmos)
+            {
+                return;
+            }
+
+            DrawCourseGizmo(
+                _runwayRange,
+                new Color(0.55f, 0.7f, 1f, 1f),
+                "Acceleration / braking");
+            DrawCourseGizmo(
+                _rollingSlopeRange,
+                new Color(0.35f, 1f, 0.55f, 1f),
+                "Rolling slope stop");
+            DrawCourseGizmo(
+                _uphillJumpRange,
+                new Color(0.2f, 0.9f, 1f, 1f),
+                "Uphill jump");
+            DrawCourseGizmo(
+                _lowCeilingRange,
+                Color.cyan,
+                "Low ceiling");
+            DrawCourseGizmo(
+                _jumpableStepRange,
+                new Color(1f, 0.8f, 0.05f, 1f),
+                "Jumpable step");
+            DrawCourseGizmo(
+                _steepSlopeRange,
+                new Color(1f, 0.25f, 0.2f, 1f),
+                "Steep slope");
+        }
+
+        private void DrawCourseGizmo(
+            Vector2 range,
+            Color color,
+            string label)
+        {
+            float width = Mathf.Max(0f, range.y - range.x);
+            Vector3 center = new Vector3(
+                (range.x + range.y) * 0.5f,
+                _courseGizmoY,
+                0f);
+            Vector3 size = new Vector3(width, _courseGizmoHeight, 0.1f);
+            Color fillColor = color;
+            fillColor.a = 0.2f;
+            Gizmos.color = fillColor;
+            Gizmos.DrawCube(center, size);
+            Gizmos.color = color;
+            Gizmos.DrawWireCube(center, size);
+            UnityEditor.Handles.Label(
+                center + Vector3.up * (_courseGizmoHeight + 0.15f),
+                label);
+        }
 
         private void OnValidate()
         {
             _buttonRect.width = Mathf.Max(220f, _buttonRect.width);
             _buttonRect.height = Mathf.Max(30f, _buttonRect.height);
+            _runtimePanelRect.width = Mathf.Max(280f, _runtimePanelRect.width);
+            _runtimePanelRect.height = Mathf.Max(90f, _runtimePanelRect.height);
+            _coursePromptRect.width = Mathf.Max(360f, _coursePromptRect.width);
+            _coursePromptRect.height = Mathf.Max(30f, _coursePromptRect.height);
+            _courseGizmoHeight = Mathf.Max(0.05f, _courseGizmoHeight);
+            NormalizeRange(ref _runwayRange);
+            NormalizeRange(ref _rollingSlopeRange);
+            NormalizeRange(ref _uphillJumpRange);
+            NormalizeRange(ref _lowCeilingRange);
+            NormalizeRange(ref _jumpableStepRange);
+            NormalizeRange(ref _steepSlopeRange);
 
             if (!Application.isPlaying)
             {
                 InitializeComponents();
             }
+        }
+
+        private void NormalizeRange(ref Vector2 range)
+        {
+            if (range.x <= range.y)
+            {
+                return;
+            }
+
+            float minimum = range.y;
+            range.y = range.x;
+            range.x = minimum;
         }
 #endif
     }

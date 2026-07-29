@@ -23,6 +23,7 @@ namespace Portfolio.Locomotion.Spline
         [SerializeField] private float _airAcceleration = 35f;
         [SerializeField] private float _airDeceleration = 25f;
         [SerializeField] private float _minimumInput = 0.01f;
+        [SerializeField] private float _groundedStopSpeed = 0.05f;
 
         public float MaximumGroundSpeed => _maximumGroundSpeed;
         public float GroundAcceleration => _groundAcceleration;
@@ -31,6 +32,7 @@ namespace Portfolio.Locomotion.Spline
         public float SlopeDeceleration => _slopeDeceleration;
         public float AirAcceleration => _airAcceleration;
         public float AirDeceleration => _airDeceleration;
+        public float GroundedStopSpeed => _groundedStopSpeed;
 
         #endregion
 
@@ -69,10 +71,27 @@ namespace Portfolio.Locomotion.Spline
 
             if (!state.ControlEnabled)
             {
+                if (state.Grounded && state.OnWalkableSlope)
+                {
+                    ApplySlopeMovement(
+                        ref velocity,
+                        state,
+                        surfaceProbe,
+                        0f,
+                        deltaTime);
+                    return;
+                }
+
                 ApplyHorizontalDeceleration(
                     ref velocity,
                     state.Grounded ? _groundDeceleration : _airDeceleration,
                     deltaTime);
+
+                if (state.Grounded)
+                {
+                    velocity.y = 0f;
+                }
+
                 return;
             }
 
@@ -117,6 +136,7 @@ namespace Portfolio.Locomotion.Spline
             _airAcceleration = Mathf.Max(0f, _airAcceleration);
             _airDeceleration = Mathf.Max(0f, _airDeceleration);
             _minimumInput = Mathf.Max(0.0001f, _minimumInput);
+            _groundedStopSpeed = Mathf.Max(0f, _groundedStopSpeed);
         }
 
         private void ApplyHorizontalMovement(
@@ -127,16 +147,22 @@ namespace Portfolio.Locomotion.Spline
             float deltaTime,
             bool grounded)
         {
-            float targetSpeed = Mathf.Abs(movementInput) > _minimumInput
+            bool hasInput = Mathf.Abs(movementInput) > _minimumInput;
+            float targetSpeed = hasInput
                 ? movementInput * _maximumGroundSpeed
                 : 0f;
-            float rate = Mathf.Abs(movementInput) > _minimumInput
+            float rate = hasInput
                 ? acceleration
                 : deceleration;
             velocity.x = Mathf.MoveTowards(velocity.x, targetSpeed, rate * deltaTime);
 
             if (grounded)
             {
+                if (!hasInput && Mathf.Abs(velocity.x) <= _groundedStopSpeed)
+                {
+                    velocity.x = 0f;
+                }
+
                 velocity.y = 0f;
             }
         }
@@ -173,6 +199,12 @@ namespace Portfolio.Locomotion.Spline
                 ? _slopeAcceleration
                 : _slopeDeceleration;
             float nextSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, rate * deltaTime);
+
+            if (!hasInput && Mathf.Abs(nextSpeed) <= _groundedStopSpeed)
+            {
+                nextSpeed = 0f;
+            }
+
             velocity = tangent * nextSpeed;
         }
 
