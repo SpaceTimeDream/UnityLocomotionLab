@@ -77,7 +77,7 @@ namespace Portfolio.Locomotion.Spline
         {
             EnsureInitialized();
 
-            if (ignoreGrounding || velocity.y > _risingGroundedVelocityThreshold)
+            if (ignoreGrounding)
             {
                 ClearSurface(state);
                 return;
@@ -89,12 +89,24 @@ namespace Portfolio.Locomotion.Spline
                 out Collider2D contactCollider,
                 out Vector2 contactNormal))
             {
+                if (IsSeparatingFromSurface(velocity, contactNormal))
+                {
+                    ClearSurface(state);
+                    return;
+                }
+
                 ApplySurface(contactCollider, contactNormal, state);
                 return;
             }
 
             if (TryGetGroundHit(capsuleCollider, _probeDistance, out RaycastHit2D hit))
             {
+                if (IsSeparatingFromSurface(velocity, hit.normal))
+                {
+                    ClearSurface(state);
+                    return;
+                }
+
                 ApplySurface(hit.collider, hit.normal, state);
                 return;
             }
@@ -288,6 +300,11 @@ namespace Portfolio.Locomotion.Spline
                 collider != capsuleCollider &&
                 !collider.isTrigger &&
                 collider.attachedRigidbody != capsuleCollider.attachedRigidbody;
+        }
+
+        private bool IsSeparatingFromSurface(Vector2 velocity, Vector2 surfaceNormal)
+        {
+            return Vector2.Dot(velocity, surfaceNormal) > _risingGroundedVelocityThreshold;
         }
 
 #if UNITY_EDITOR
