@@ -1,8 +1,10 @@
+using Portfolio.Locomotion.Core;
 using UnityEngine;
 
 namespace Portfolio.Locomotion.Spline
 {
-    public class SimulatedSplineJump : MonoBehaviour
+    [System.Serializable]
+    public class SimulatedSplineJump
     {
         //------------------------------- Game Pause -------------------------------//
 
@@ -11,15 +13,39 @@ namespace Portfolio.Locomotion.Spline
         //------------------------------- Parameters -------------------------------//
 
         #region Components
-        [SerializeField] private float _jumpSpeed = 11f;
+
+        [Header("JUMP PARAMETERS")]
+        [SerializeField] private float _jumpVelocity = 12f;
+        [SerializeField] private float _maximumJumpVelocity = 12f;
         [SerializeField] private float _jumpBufferTime = 0.12f;
         [SerializeField] private float _coyoteTime = 0.1f;
-        [SerializeField, Range(0f, 1f)] private float _earlyReleaseVelocityScale = 0.45f;
+        [SerializeField] private float _jumpAnticipationDuration = 0.08f;
+        [SerializeField] private int _groundCheckDelayFixedFrames = 8;
+        [SerializeField] private bool _enableEarlyRelease = true;
+        [SerializeField] private float _earlyReleaseVelocityMultiplier = 0.5f;
 
-        private float _lastJumpPressedTime = -100f;
-        private float _lastGroundedTime = -100f;
+        private float _jumpBufferRemainingTime;
+        private float _coyoteRemainingTime;
+        private float _anticipationRemainingTime;
+        private int _groundCheckDelayFramesRemaining;
         private bool _jumpConsumed;
-        private bool _releaseQueued;
+        private bool _jumpHeld;
+        private bool _inAnticipationFrame;
+        private bool _inJumpAscentState;
+        private bool _jumpDisabled;
+        private bool _steepSlopeJumpRestricted;
+
+        public float JumpVelocity => _jumpVelocity;
+        public float MaximumJumpVelocity => _maximumJumpVelocity;
+        public float JumpBufferRemainingTime => _jumpBufferRemainingTime;
+        public float CoyoteRemainingTime => _coyoteRemainingTime;
+        public bool HasBufferedJump => _jumpBufferRemainingTime > 0f;
+        public bool CanUseCoyoteTime => _coyoteRemainingTime > 0f;
+        public bool IsInAnticipationFrame => _inAnticipationFrame;
+        public bool IsInJumpAscentState => _inJumpAscentState;
+        public bool IsJumpDisabled => _jumpDisabled;
+        public bool IsSteepSlopeJumpRestricted => _steepSlopeJumpRestricted;
+        public bool ShouldIgnoreGrounding => _groundCheckDelayFramesRemaining > 0;
 
         #endregion
 
@@ -40,69 +66,187 @@ namespace Portfolio.Locomotion.Spline
         #endregion
 
         //------------------------------- Core / Routines Methods -------------------------------//
-        public void NotifyGrounded(bool grounded)
-        {
-            if (grounded)
-            {
-                _lastGroundedTime = Time.time;
-                _jumpConsumed = false;
-            }
-        }
 
         public void RequestJump()
         {
-            _lastJumpPressedTime = Time.time;
+            _jumpHeld = true;
+            _jumpBufferRemainingTime = _jumpBufferTime;
         }
 
-        public void ReleaseJump()
+        public void ReleaseJump(ref Vector2 velocity)
         {
-            _releaseQueued = true;
+            _jumpHeld = false;
+
+            if (!_enableEarlyRelease || !_inJumpAscentState || velocity.y <= 0f)
+            {
+                return;
+            }
+
+            velocity.y *= _earlyReleaseVelocityMultiplier;
         }
 
-        public bool CanJump()
+        public void UpdateRuntimeState(Vector2 velocity, LocomotionState state, float deltaTime)
         {
-            return !_jumpConsumed && Time.time - _lastJumpPressedTime <= _jumpBufferTime && Time.time - _lastGroundedTime <= _coyoteTime;
+            if (_groundCheckDelayFramesRemaining > 0)
+            {
+                _groundCheckDelayFramesRemaining--;
+            }
+
+            if (_jumpBufferRemainingTime > 0f && !_inAnticipationFrame)
+            {
+                _jumpBufferRemainingTime -= deltaTime;
+            }
+
+            if (state.Grounded && !_inAnticipationFrame && !_inJumpAscentState)
+            {
+                _coyoteRemainingTime = _coyoteTime;
+                _jumpConsumed = false;
+            }
+            else
+            {
+                _coyoteRemainingTime = Mathf.Max(0f, _coyoteRemainingTime - deltaTime);
+            }
+
+            if (_inJumpAscentState && !_inAnticipationFrame && velocity.y <= 0f)
+            {
+                _inJumpAscentState = false;
+            }
         }
 
-        public void ConsumeJump(SplineLocomotionState state)
+        public bool ApplyJump(
+            ref Vector2 velocity,
+            LocomotionState state,
+            bool blockHorizontalMovement,
+            float deltaTime)
         {
-            Vector2 momentum = state.SurfaceTangent * state.TangentialGroundSpeed;
-            state.AirborneVelocity = momentum + state.SurfaceNormal * _jumpSpeed;
-            state.Grounded = false;
-            state.Rising = true;
-            state.Falling = false;
+            if (_inAnticipationFrame)
+            {
+                _anticipationRemainingTime -= deltaTime;
+
+                if (_anticipationRemainingTime <= 0f)
+                {
+                    return ExecuteJump(ref velocity, state, blockHorizontalMovement);
+                }
+
+                return false;
+            }
+
+            if (!CanStartJump(state))
+            {
+                return false;
+            }
+
             _jumpConsumed = true;
-            _lastJumpPressedTime = -100f;
-        }
+            _inAnticipationFrame = true;
+            _inJumpAscentState = true;
+            _anticipationRemainingTime = _jumpAnticipationDuration;
+            _jumpBufferRemainingTime = 0f;
 
-        public void ApplyEarlyRelease(SplineLocomotionState state)
-        {
-            if (!_releaseQueued)
+            if (_anticipationRemainingTime <= 0f)
             {
-                return;
+                return ExecuteJump(ref velocity, state, blockHorizontalMovement);
             }
 
-            _releaseQueued = false;
-            if (state.AirborneVelocity.y <= 0f)
-            {
-                return;
-            }
-
-            state.AirborneVelocity = new Vector2(state.AirborneVelocity.x, state.AirborneVelocity.y * _earlyReleaseVelocityScale);
+            return false;
         }
 
-        public bool HasBufferedJump()
+        public void SetJumpDisabled(bool disabled)
         {
-            return Time.time - _lastJumpPressedTime <= _jumpBufferTime;
+            _jumpDisabled = disabled;
         }
 
-        public void ResetRuntime()
+        public void SetSteepSlopeJumpRestriction(bool restricted)
         {
-            _lastJumpPressedTime = -100f;
-            _lastGroundedTime = -100f;
+            _steepSlopeJumpRestricted = restricted;
+        }
+
+        public void ResetJumpBuffer()
+        {
+            _jumpBufferRemainingTime = 0f;
+        }
+
+        public void ResetRuntimeState()
+        {
+            _jumpBufferRemainingTime = 0f;
+            _coyoteRemainingTime = 0f;
+            _anticipationRemainingTime = 0f;
+            _groundCheckDelayFramesRemaining = 0;
             _jumpConsumed = false;
-            _releaseQueued = false;
+            _jumpHeld = false;
+            _inAnticipationFrame = false;
+            _inJumpAscentState = false;
+            _jumpDisabled = false;
+            _steepSlopeJumpRestricted = false;
         }
+
+        public void Validate()
+        {
+            _jumpVelocity = Mathf.Max(0f, _jumpVelocity);
+            _maximumJumpVelocity = Mathf.Max(_jumpVelocity, _maximumJumpVelocity);
+            _jumpBufferTime = Mathf.Max(0f, _jumpBufferTime);
+            _coyoteTime = Mathf.Max(0f, _coyoteTime);
+            _jumpAnticipationDuration = Mathf.Max(0f, _jumpAnticipationDuration);
+            _groundCheckDelayFixedFrames = Mathf.Max(0, _groundCheckDelayFixedFrames);
+            _earlyReleaseVelocityMultiplier = Mathf.Clamp01(_earlyReleaseVelocityMultiplier);
+        }
+
+        private bool CanStartJump(LocomotionState state)
+        {
+            if (!HasBufferedJump || _jumpConsumed || !state.ControlEnabled)
+            {
+                return false;
+            }
+
+            if (_jumpDisabled || _steepSlopeJumpRestricted)
+            {
+                return false;
+            }
+
+            return state.Grounded || CanUseCoyoteTime;
+        }
+
+        private bool ExecuteJump(
+            ref Vector2 velocity,
+            LocomotionState state,
+            bool blockHorizontalMovement)
+        {
+            if (!state.ControlEnabled || _jumpDisabled || _steepSlopeJumpRestricted)
+            {
+                CancelAnticipation();
+                return false;
+            }
+
+            if (blockHorizontalMovement)
+            {
+                velocity.x = 0f;
+            }
+
+            float baseVerticalVelocity = state.Grounded
+                ? 0f
+                : Mathf.Max(velocity.y, 0f);
+            velocity.y = Mathf.Min(baseVerticalVelocity + _jumpVelocity, _maximumJumpVelocity);
+
+            if (_enableEarlyRelease && !_jumpHeld)
+            {
+                velocity.y *= _earlyReleaseVelocityMultiplier;
+            }
+
+            state.SetSurface(false, false, false, Vector2.up, 0f);
+            _groundCheckDelayFramesRemaining = _groundCheckDelayFixedFrames;
+            _inAnticipationFrame = false;
+            _inJumpAscentState = true;
+            _anticipationRemainingTime = 0f;
+            _coyoteRemainingTime = 0f;
+            return true;
+        }
+
+        private void CancelAnticipation()
+        {
+            _inAnticipationFrame = false;
+            _inJumpAscentState = false;
+            _anticipationRemainingTime = 0f;
+        }
+
 #if UNITY_EDITOR
         //------------------------------- Editor -------------------------------//
 #endif

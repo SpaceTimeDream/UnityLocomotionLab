@@ -1,8 +1,10 @@
+using Portfolio.Locomotion.Core;
 using UnityEngine;
 
 namespace Portfolio.Locomotion.Spline
 {
-    public class SimulatedSplineMovement : MonoBehaviour
+    [System.Serializable]
+    public class SimulatedSplineMovement
     {
         //------------------------------- Game Pause -------------------------------//
 
@@ -11,19 +13,24 @@ namespace Portfolio.Locomotion.Spline
         //------------------------------- Parameters -------------------------------//
 
         #region Components
-        [SerializeField] private float _maximumGroundSpeed = 7f;
-        [SerializeField] private float _groundAcceleration = 45f;
-        [SerializeField] private float _groundBraking = 55f;
-        [SerializeField] private float _groundFriction = 18f;
-        [SerializeField] private float _airAcceleration = 28f;
-        [SerializeField] private float _maximumAirHorizontalSpeed = 7f;
-        [SerializeField] private float _gravity = 28f;
-        [SerializeField] private float _maximumFallSpeed = 22f;
-        [SerializeField, Range(0f, 89f)] private float _walkableSlopeAngle = 50f;
 
-        // Properties
-        public float Gravity => _gravity;
-        public float WalkableSlopeAngle => _walkableSlopeAngle;
+        [Header("MOVE PARAMETERS")]
+        [SerializeField] private float _maximumGroundSpeed = 8f;
+        [SerializeField] private float _groundAcceleration = 70f;
+        [SerializeField] private float _groundDeceleration = 90f;
+        [SerializeField] private float _slopeAcceleration = 70f;
+        [SerializeField] private float _slopeDeceleration = 90f;
+        [SerializeField] private float _airAcceleration = 35f;
+        [SerializeField] private float _airDeceleration = 25f;
+        [SerializeField] private float _minimumInput = 0.01f;
+
+        public float MaximumGroundSpeed => _maximumGroundSpeed;
+        public float GroundAcceleration => _groundAcceleration;
+        public float GroundDeceleration => _groundDeceleration;
+        public float SlopeAcceleration => _slopeAcceleration;
+        public float SlopeDeceleration => _slopeDeceleration;
+        public float AirAcceleration => _airAcceleration;
+        public float AirDeceleration => _airDeceleration;
 
         #endregion
 
@@ -44,38 +51,153 @@ namespace Portfolio.Locomotion.Spline
         #endregion
 
         //------------------------------- Core / Routines Methods -------------------------------//
-        public void SimulateGrounded(SplineLocomotionState state, float input, float deltaTime)
+
+        public void ApplyMovement(
+            ref Vector2 velocity,
+            LocomotionState state,
+            SplineGroundProbe2D surfaceProbe,
+            float movementInput,
+            bool blockMovementIntoSteepSlope,
+            float facingDirection,
+            float deltaTime)
         {
-            float targetDirection = Mathf.Abs(input) > 0.01f ? Mathf.Sign(input) : 0f;
-            float uphillSign = Mathf.Sign(Vector2.Dot(state.SurfaceTangent, Vector2.up));
-            bool blocksUphill = state.SteepSlope && Mathf.Approximately(targetDirection, uphillSign);
-
-            if (targetDirection != 0f && !blocksUphill)
+            if (blockMovementIntoSteepSlope)
             {
-                state.TangentialGroundSpeed = Mathf.MoveTowards(state.TangentialGroundSpeed, targetDirection * _maximumGroundSpeed, _groundAcceleration * deltaTime);
-            }
-            else if (targetDirection == 0f && state.WalkableSlope)
-            {
-                state.TangentialGroundSpeed = Mathf.MoveTowards(state.TangentialGroundSpeed, 0f, _groundFriction * deltaTime);
-            }
-            else if (blocksUphill)
-            {
-                state.TangentialGroundSpeed = Mathf.MoveTowards(state.TangentialGroundSpeed, 0f, _groundBraking * deltaTime);
+                movementInput = RemoveInputIntoSlope(movementInput, facingDirection);
+                RemoveVelocityIntoSlope(ref velocity, facingDirection);
             }
 
-            Vector2 gravityVector = Vector2.down * _gravity;
-            state.TangentialGroundSpeed += Vector2.Dot(gravityVector, state.SurfaceTangent) * deltaTime;
-            state.TangentialGroundSpeed = Mathf.Clamp(state.TangentialGroundSpeed, -_maximumGroundSpeed, _maximumGroundSpeed);
+            if (!state.ControlEnabled)
+            {
+                ApplyHorizontalDeceleration(
+                    ref velocity,
+                    state.Grounded ? _groundDeceleration : _airDeceleration,
+                    deltaTime);
+                return;
+            }
+
+            if (state.Grounded && state.OnWalkableSlope)
+            {
+                ApplySlopeMovement(ref velocity, state, surfaceProbe, movementInput, deltaTime);
+                return;
+            }
+
+            if (state.Grounded)
+            {
+                ApplyHorizontalMovement(
+                    ref velocity,
+                    movementInput,
+                    _groundAcceleration,
+                    _groundDeceleration,
+                    deltaTime,
+                    true);
+                return;
+            }
+
+            ApplyHorizontalMovement(
+                ref velocity,
+                movementInput,
+                _airAcceleration,
+                _airDeceleration,
+                deltaTime,
+                false);
         }
 
-        public void SimulateAirborne(SplineLocomotionState state, float input, float deltaTime)
+        public void ResetRuntimeState()
         {
-            Vector2 velocity = state.AirborneVelocity;
-            float targetX = Mathf.Abs(input) > 0.01f ? Mathf.Sign(input) * _maximumAirHorizontalSpeed : velocity.x;
-            velocity.x = Mathf.MoveTowards(velocity.x, targetX, _airAcceleration * deltaTime);
-            velocity.y = Mathf.Max(velocity.y - _gravity * deltaTime, -_maximumFallSpeed);
-            state.AirborneVelocity = velocity;
         }
+
+        public void Validate()
+        {
+            _maximumGroundSpeed = Mathf.Max(0f, _maximumGroundSpeed);
+            _groundAcceleration = Mathf.Max(0f, _groundAcceleration);
+            _groundDeceleration = Mathf.Max(0f, _groundDeceleration);
+            _slopeAcceleration = Mathf.Max(0f, _slopeAcceleration);
+            _slopeDeceleration = Mathf.Max(0f, _slopeDeceleration);
+            _airAcceleration = Mathf.Max(0f, _airAcceleration);
+            _airDeceleration = Mathf.Max(0f, _airDeceleration);
+            _minimumInput = Mathf.Max(0.0001f, _minimumInput);
+        }
+
+        private void ApplyHorizontalMovement(
+            ref Vector2 velocity,
+            float movementInput,
+            float acceleration,
+            float deceleration,
+            float deltaTime,
+            bool grounded)
+        {
+            float targetSpeed = Mathf.Abs(movementInput) > _minimumInput
+                ? movementInput * _maximumGroundSpeed
+                : 0f;
+            float rate = Mathf.Abs(movementInput) > _minimumInput
+                ? acceleration
+                : deceleration;
+            velocity.x = Mathf.MoveTowards(velocity.x, targetSpeed, rate * deltaTime);
+
+            if (grounded)
+            {
+                velocity.y = 0f;
+            }
+        }
+
+        private void ApplySlopeMovement(
+            ref Vector2 velocity,
+            LocomotionState state,
+            SplineGroundProbe2D surfaceProbe,
+            float movementInput,
+            float deltaTime)
+        {
+            Vector2 tangent = surfaceProbe.GetSlopeTangent(state.SurfaceNormal);
+            bool hasInput = Mathf.Abs(movementInput) > _minimumInput;
+
+            if (hasInput)
+            {
+                Vector2 requestedDirection = Vector2.right * Mathf.Sign(movementInput);
+
+                if (Vector2.Dot(tangent, requestedDirection) < 0f)
+                {
+                    tangent *= -1f;
+                }
+            }
+            else if (Vector2.Dot(tangent, velocity) < 0f)
+            {
+                tangent *= -1f;
+            }
+
+            float currentSpeed = Vector2.Dot(velocity, tangent);
+            float targetSpeed = hasInput
+                ? Mathf.Abs(movementInput) * _maximumGroundSpeed
+                : 0f;
+            float rate = hasInput
+                ? _slopeAcceleration
+                : _slopeDeceleration;
+            float nextSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, rate * deltaTime);
+            velocity = tangent * nextSpeed;
+        }
+
+        private void ApplyHorizontalDeceleration(ref Vector2 velocity, float deceleration, float deltaTime)
+        {
+            velocity.x = Mathf.MoveTowards(velocity.x, 0f, deceleration * deltaTime);
+        }
+
+        private float RemoveInputIntoSlope(float movementInput, float facingDirection)
+        {
+            return Mathf.Sign(movementInput) == Mathf.Sign(facingDirection)
+                ? 0f
+                : movementInput;
+        }
+
+        private void RemoveVelocityIntoSlope(ref Vector2 velocity, float facingDirection)
+        {
+            if (velocity.x * facingDirection <= 0f)
+            {
+                return;
+            }
+
+            velocity.x = 0f;
+        }
+
 #if UNITY_EDITOR
         //------------------------------- Editor -------------------------------//
 #endif

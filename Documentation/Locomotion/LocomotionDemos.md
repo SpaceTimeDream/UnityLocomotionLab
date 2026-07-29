@@ -4,11 +4,13 @@ The project contains two parallel movement showcases built from the same open Sp
 
 ## Rigidbody2D
 
-`RigidbodyLocomotionDemo` uses a dynamic `Rigidbody2D`, a capsule collider and the existing modular movement, jump, slope, steep-slope, external-force and moving-platform code. The SpriteShape spline is baked to an `EdgeCollider2D` for Unity physics.
+`RigidbodyLocomotionDemo` uses a dynamic `Rigidbody2D`, a capsule collider and the modular movement, jump, slope, steep-slope, external-force and moving-platform code. Unity velocity and gravity drive its movement.
 
-## Simulated
+## Simulated translate
 
-`SimulatedSplineLocomotionDemo` contains no `Rigidbody2D` on the player. It calculates velocity and gravity directly, moves through `Transform.Translate`, uses raycasts for grounded and landing checks, and maps contact back to the sampled `SpriteShapeController.spline`.
+`SimulatedSplineLocomotionDemo` uses the same controller/module flow with an internally calculated velocity. Movement is committed through `Transform.Translate`, while a kinematic `Rigidbody2D` and `CapsuleCollider2D` provide contacts, surface normals and predictive collision shape information. Rigidbody velocity and gravity do not drive the player.
+
+The simulated movement module includes explicit ground, slope and air deceleration. Its collision resolver stops grounded motion at steep surfaces without an accumulating push-back.
 
 ## Open the demos
 
