@@ -2,7 +2,8 @@ using UnityEngine;
 
 namespace Portfolio.Locomotion.Spline
 {
-    public class SimulatedCollisionResolver2D : MonoBehaviour
+    [System.Serializable]
+    public class SimulatedCollisionResolver2D
     {
         //------------------------------- Game Pause -------------------------------//
 
@@ -12,32 +13,17 @@ namespace Portfolio.Locomotion.Spline
 
         #region Components
 
-        [Header("COMPONENTS")]
-        [SerializeField] private CapsuleCollider2D _capsuleCollider;
-
-        [Header("COLLISION")]
+        [Header("COLLISION PARAMETERS")]
         [SerializeField] private LayerMask _collisionLayers = Physics2D.DefaultRaycastLayers;
-        [SerializeField, Min(0.001f)] private float _collisionSkin = 0.02f;
-        [SerializeField, Min(0f)] private float _separationPushDistance = 0.005f;
-        [SerializeField, Min(0f)] private float _surfaceNormalTolerance = 0.001f;
-        [SerializeField, Min(1)] private int _maximumResolutionIterations = 4;
-        [SerializeField, Min(0f)] private float _maximumDepenetrationDistance = 0.05f;
-        [SerializeField, Min(0.01f)] private float _groundedSplineSubdivisionDistance = 0.25f;
-        [SerializeField] private bool _drawCollisionGizmos;
+        [SerializeField] private float _collisionSkin = 0.02f;
+        [SerializeField] private float _surfaceNormalTolerance = 0.001f;
+        [SerializeField] private int _maximumResolutionIterations = 4;
 
         private readonly RaycastHit2D[] _hitBuffer = new RaycastHit2D[16];
-        private readonly Collider2D[] _overlapBuffer = new Collider2D[16];
         private ContactFilter2D _contactFilter;
-        private Vector2 _lastSweepStart;
-        private Vector2 _lastIntendedDisplacement;
-        private Vector2 _lastResolvedDisplacement;
-        private Vector2 _lastContactPoint;
-        private Vector2 _lastContactNormal;
-        private Vector2 _lastSeparationPush;
-        private bool _hasLastContact;
+        private bool _initialized;
 
         public float CollisionSkin => _collisionSkin;
-        public float MaximumSplineSweepStep => _groundedSplineSubdivisionDistance;
 
         #endregion
 
@@ -49,150 +35,111 @@ namespace Portfolio.Locomotion.Spline
 
         #region Unity
 
-        private void Start()
-        {
-            Initialize();
-        }
-
-        private void OnDrawGizmosSelected()
-        {
-            DrawSelectedGizmos();
-        }
-
         #endregion
 
         //------------------------------- Initialization Methods -------------------------------//
 
         #region Initialization
 
-        private void Initialize()
+        public void Initialize()
         {
-            InitializeModules();
-            InitializeComponents();
-            InitializeEvents();
-        }
-
-        private void InitializeModules()
-        {
-        }
-
-        private void InitializeComponents()
-        {
-            if (_capsuleCollider == null)
-            {
-                _capsuleCollider = GetComponent<CapsuleCollider2D>();
-            }
-
-            InitializeContactFilter();
-        }
-
-        private void InitializeEvents()
-        {
+            _contactFilter = new ContactFilter2D();
+            _contactFilter.SetLayerMask(_collisionLayers);
+            _contactFilter.useTriggers = false;
+            _initialized = true;
         }
 
         #endregion
 
         //------------------------------- Core / Routines Methods -------------------------------//
 
-        public Vector2 Resolve(Vector2 bodyPosition, Vector2 intendedDisplacement, ref Vector2 velocity,
-            float maximumWalkableSlopeAngle, bool grounded, out RaycastHit2D blockingHit)
+        public Vector2 Resolve(
+            Vector2 bodyPosition,
+            CapsuleCollider2D capsuleCollider,
+            Vector2 intendedDisplacement,
+            ref Vector2 velocity,
+            bool grounded,
+            float maximumWalkableSlopeAngle,
+            out RaycastHit2D blockingHit)
         {
-            InitializeContactFilter();
-            ResetDebugState(bodyPosition, intendedDisplacement);
+            EnsureInitialized();
             blockingHit = default;
 
-            if (_capsuleCollider == null || !_capsuleCollider.enabled)
+            if (capsuleCollider == null ||
+                !capsuleCollider.enabled ||
+                intendedDisplacement.sqrMagnitude <=
+                _surfaceNormalTolerance * _surfaceNormalTolerance)
             {
-                _lastResolvedDisplacement = intendedDisplacement;
                 return intendedDisplacement;
             }
 
-            Vector2 resolved = ResolveDepenetration(bodyPosition, grounded, maximumWalkableSlopeAngle);
-            Vector2 remaining = intendedDisplacement;
+            Vector2 resolvedDisplacement = Vector2.zero;
+            Vector2 remainingDisplacement = intendedDisplacement;
 
-            for (int iteration = 0; iteration < _maximumResolutionIterations &&
-                remaining.sqrMagnitude > _surfaceNormalTolerance * _surfaceNormalTolerance; iteration++)
+            for (int iteration = 0;
+                iteration < _maximumResolutionIterations &&
+                remainingDisplacement.sqrMagnitude >
+                _surfaceNormalTolerance * _surfaceNormalTolerance;
+                iteration++)
             {
-                Vector2 origin = bodyPosition + resolved;
+                Vector2 castPosition = bodyPosition + resolvedDisplacement;
 
-                if (!TryFindEarliestHit(origin, remaining, grounded, maximumWalkableSlopeAngle, out RaycastHit2D hit))
+                if (!TryFindEarliestHit(
+                    castPosition,
+                    capsuleCollider,
+                    remainingDisplacement,
+                    out RaycastHit2D hit))
                 {
-                    resolved += remaining;
+                    resolvedDisplacement += remainingDisplacement;
                     break;
                 }
 
                 blockingHit = hit;
-                RecordContact(hit);
-                float movementDistance = remaining.magnitude;
-                float safeDistance = Mathf.Clamp(hit.distance - _collisionSkin, 0f, movementDistance);
-                Vector2 safeMovement = remaining.normalized * safeDistance;
-                resolved += safeMovement;
-                Vector2 unresolved = remaining - safeMovement;
+                float movementDistance = remainingDisplacement.magnitude;
+                float safeDistance = Mathf.Clamp(
+                    hit.distance - _collisionSkin,
+                    0f,
+                    movementDistance);
+                Vector2 safeMovement = remainingDisplacement.normalized * safeDistance;
+                resolvedDisplacement += safeMovement;
+                Vector2 unresolvedDisplacement = remainingDisplacement - safeMovement;
                 RemoveVelocityIntoSurface(ref velocity, hit.normal);
 
-                if (!IsWalkableSupport(hit.normal, grounded, maximumWalkableSlopeAngle))
+                if (grounded &&
+                    !IsWalkableSurface(hit.normal, maximumWalkableSlopeAngle))
                 {
-                    Vector2 separation = ResolveSeparationPush(bodyPosition + resolved, hit.normal);
-                    resolved += separation;
-                    _lastSeparationPush = separation;
+                    StopHorizontalVelocityIntoSurface(ref velocity, hit.normal);
+                    break;
                 }
 
-                remaining = Vector3.ProjectOnPlane(unresolved, hit.normal);
+                remainingDisplacement =
+                    unresolvedDisplacement -
+                    hit.normal * Vector2.Dot(unresolvedDisplacement, hit.normal);
             }
 
-            _lastResolvedDisplacement = resolved;
-            return resolved;
+            return resolvedDisplacement;
         }
 
-        private void InitializeContactFilter()
+        public void Validate()
         {
-            _contactFilter.SetLayerMask(_collisionLayers);
-            _contactFilter.useLayerMask = true;
-            _contactFilter.useTriggers = false;
+            _collisionSkin = Mathf.Max(0.001f, _collisionSkin);
+            _surfaceNormalTolerance = Mathf.Max(0.0001f, _surfaceNormalTolerance);
+            _maximumResolutionIterations = Mathf.Max(1, _maximumResolutionIterations);
         }
 
-        private Vector2 ResolveDepenetration(Vector2 bodyPosition, bool grounded, float maximumWalkableSlopeAngle)
+        private void EnsureInitialized()
         {
-            if (_maximumDepenetrationDistance <= 0f || bodyPosition != (Vector2)transform.position)
+            if (!_initialized)
             {
-                return Vector2.zero;
+                Initialize();
             }
-
-            GetCapsuleShape(bodyPosition, out Vector2 center, out Vector2 size, out CapsuleDirection2D direction, out float angle);
-            int overlapCount = Physics2D.OverlapCapsule(center, size, direction, angle, _contactFilter, _overlapBuffer);
-            Vector2 smallestCorrection = Vector2.zero;
-            float smallestDistance = float.PositiveInfinity;
-
-            for (int index = 0; index < overlapCount; index++)
-            {
-                Collider2D overlap = _overlapBuffer[index];
-
-                if (!IsValidCollider(overlap))
-                {
-                    continue;
-                }
-
-                ColliderDistance2D distance = Physics2D.Distance(_capsuleCollider, overlap);
-
-                if (!distance.isOverlapped || IsWalkableSupport(distance.normal, grounded, maximumWalkableSlopeAngle))
-                {
-                    continue;
-                }
-
-                float correctionDistance = Mathf.Min(Mathf.Abs(distance.distance), _maximumDepenetrationDistance);
-
-                if (correctionDistance < smallestDistance)
-                {
-                    smallestDistance = correctionDistance;
-                    smallestCorrection = -distance.normal * correctionDistance;
-                }
-            }
-
-            return smallestCorrection;
         }
 
-        private bool TryFindEarliestHit(Vector2 bodyPosition, Vector2 displacement, bool grounded,
-            float maximumWalkableSlopeAngle, out RaycastHit2D earliestHit)
+        private bool TryFindEarliestHit(
+            Vector2 bodyPosition,
+            CapsuleCollider2D capsuleCollider,
+            Vector2 displacement,
+            out RaycastHit2D earliestHit)
         {
             earliestHit = default;
             float movementDistance = displacement.magnitude;
@@ -202,17 +149,31 @@ namespace Portfolio.Locomotion.Spline
                 return false;
             }
 
-            GetCapsuleShape(bodyPosition, out Vector2 center, out Vector2 size, out CapsuleDirection2D capsuleDirection, out float angle);
+            GetCapsuleShape(
+                bodyPosition,
+                capsuleCollider,
+                out Vector2 center,
+                out Vector2 size,
+                out CapsuleDirection2D capsuleDirection,
+                out float angle);
             Vector2 direction = displacement / movementDistance;
-            int hitCount = Physics2D.CapsuleCast(center, size, capsuleDirection, angle, direction, _contactFilter,
-                _hitBuffer, movementDistance + _collisionSkin);
+            int hitCount = Physics2D.CapsuleCast(
+                center,
+                size,
+                capsuleDirection,
+                angle,
+                direction,
+                _contactFilter,
+                _hitBuffer,
+                movementDistance + _collisionSkin);
             float earliestDistance = float.PositiveInfinity;
 
-            for (int index = 0; index < hitCount; index++)
+            for (int i = 0; i < hitCount; i++)
             {
-                RaycastHit2D hit = _hitBuffer[index];
+                RaycastHit2D hit = _hitBuffer[i];
 
-                if (!IsBlockingHit(hit, displacement, grounded, maximumWalkableSlopeAngle) || hit.distance >= earliestDistance)
+                if (!IsBlockingHit(hit, capsuleCollider, displacement) ||
+                    hit.distance >= earliestDistance)
                 {
                     continue;
                 }
@@ -224,53 +185,41 @@ namespace Portfolio.Locomotion.Spline
             return earliestHit.collider != null;
         }
 
-        private bool IsBlockingHit(RaycastHit2D hit, Vector2 displacement, bool grounded, float maximumWalkableSlopeAngle)
+        private bool IsBlockingHit(
+            RaycastHit2D hit,
+            CapsuleCollider2D capsuleCollider,
+            Vector2 displacement)
         {
-            if (!IsValidCollider(hit.collider))
+            if (!IsValidCollider(hit.collider, capsuleCollider))
             {
                 return false;
             }
 
-            float inwardMotion = Vector2.Dot(displacement, hit.normal);
-
-            if (inwardMotion >= -_surfaceNormalTolerance)
-            {
-                return false;
-            }
-
-            return !IsWalkableSupport(hit.normal, grounded, maximumWalkableSlopeAngle);
+            return Vector2.Dot(displacement, hit.normal) <
+                -_surfaceNormalTolerance;
         }
 
-        private bool IsValidCollider(Collider2D collider)
+        private bool IsValidCollider(
+            Collider2D collider,
+            CapsuleCollider2D capsuleCollider)
         {
-            return collider != null && collider != _capsuleCollider && !collider.isTrigger &&
-                !collider.transform.IsChildOf(transform);
+            return collider != null &&
+                collider != capsuleCollider &&
+                !collider.isTrigger &&
+                collider.attachedRigidbody != capsuleCollider.attachedRigidbody;
         }
 
-        private bool IsWalkableSupport(Vector2 normal, bool grounded, float maximumWalkableSlopeAngle)
+        private bool IsWalkableSurface(
+            Vector2 normal,
+            float maximumWalkableSlopeAngle)
         {
-            return grounded && Vector2.Angle(normal, Vector2.up) <= maximumWalkableSlopeAngle;
+            return normal.y > 0.01f &&
+                Vector2.Angle(normal, Vector2.up) <= maximumWalkableSlopeAngle;
         }
 
-        private Vector2 ResolveSeparationPush(Vector2 bodyPosition, Vector2 normal)
-        {
-            if (_separationPushDistance <= 0f)
-            {
-                return Vector2.zero;
-            }
-
-            Vector2 intendedPush = normal * _separationPushDistance;
-
-            if (!TryFindEarliestHit(bodyPosition, intendedPush, false, 0f, out RaycastHit2D hit))
-            {
-                return intendedPush;
-            }
-
-            float safeDistance = Mathf.Clamp(hit.distance - _collisionSkin, 0f, _separationPushDistance);
-            return normal * safeDistance;
-        }
-
-        private void RemoveVelocityIntoSurface(ref Vector2 velocity, Vector2 normal)
+        private void RemoveVelocityIntoSurface(
+            ref Vector2 velocity,
+            Vector2 normal)
         {
             float inwardVelocity = Vector2.Dot(velocity, normal);
 
@@ -280,95 +229,42 @@ namespace Portfolio.Locomotion.Spline
             }
         }
 
-        private void GetCapsuleShape(Vector2 bodyPosition, out Vector2 center, out Vector2 size,
-            out CapsuleDirection2D direction, out float angle)
+        private void StopHorizontalVelocityIntoSurface(
+            ref Vector2 velocity,
+            Vector2 normal)
         {
-            Vector3 scale = transform.lossyScale;
-            center = (Vector2)transform.TransformPoint(_capsuleCollider.offset) + bodyPosition - (Vector2)transform.position;
-            size = Vector2.Scale(_capsuleCollider.size, new Vector2(Mathf.Abs(scale.x), Mathf.Abs(scale.y)));
-            direction = _capsuleCollider.direction;
-            angle = transform.eulerAngles.z;
-        }
-
-        private void ResetDebugState(Vector2 bodyPosition, Vector2 intendedDisplacement)
-        {
-            _lastSweepStart = bodyPosition;
-            _lastIntendedDisplacement = intendedDisplacement;
-            _lastResolvedDisplacement = Vector2.zero;
-            _lastSeparationPush = Vector2.zero;
-            _hasLastContact = false;
-        }
-
-        private void RecordContact(RaycastHit2D hit)
-        {
-            _hasLastContact = true;
-            _lastContactPoint = hit.point;
-            _lastContactNormal = hit.normal;
-        }
-
-        private void DrawSelectedGizmos()
-        {
-            if (!_drawCollisionGizmos)
+            if (Mathf.Abs(normal.x) <= _surfaceNormalTolerance ||
+                velocity.x * normal.x >= 0f)
             {
                 return;
             }
 
-            if (_capsuleCollider == null)
-            {
-                _capsuleCollider = GetComponent<CapsuleCollider2D>();
-            }
-
-            if (_capsuleCollider != null)
-            {
-                Gizmos.color = Color.cyan;
-                DrawCapsuleGizmo();
-            }
-
-            Gizmos.color = Color.yellow;
-            Gizmos.DrawLine(_lastSweepStart, _lastSweepStart + _lastIntendedDisplacement);
-            Gizmos.color = Color.green;
-            Gizmos.DrawLine(_lastSweepStart, _lastSweepStart + _lastResolvedDisplacement);
-
-            if (_hasLastContact)
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawSphere(_lastContactPoint, _collisionSkin);
-                Gizmos.DrawLine(_lastContactPoint, _lastContactPoint + _lastContactNormal * 0.35f);
-                Gizmos.color = Color.magenta;
-                Gizmos.DrawLine(_lastContactPoint, _lastContactPoint + _lastSeparationPush);
-            }
+            velocity.x = 0f;
         }
 
-        private void DrawCapsuleGizmo()
+        private void GetCapsuleShape(
+            Vector2 bodyPosition,
+            CapsuleCollider2D capsuleCollider,
+            out Vector2 center,
+            out Vector2 size,
+            out CapsuleDirection2D direction,
+            out float angle)
         {
-            Bounds bounds = _capsuleCollider.bounds;
-            bool vertical = _capsuleCollider.direction == CapsuleDirection2D.Vertical;
-            float radius = vertical ? bounds.extents.x : bounds.extents.y;
-            float halfAxis = vertical ? bounds.extents.y : bounds.extents.x;
-            float centerOffset = Mathf.Max(0f, halfAxis - radius);
-            Vector2 axis = vertical ? Vector2.up : Vector2.right;
-            Vector2 side = vertical ? Vector2.right : Vector2.up;
-            Vector2 firstCenter = (Vector2)bounds.center - axis * centerOffset;
-            Vector2 secondCenter = (Vector2)bounds.center + axis * centerOffset;
-            Gizmos.DrawWireSphere(firstCenter, radius);
-            Gizmos.DrawWireSphere(secondCenter, radius);
-            Gizmos.DrawLine(firstCenter + side * radius, secondCenter + side * radius);
-            Gizmos.DrawLine(firstCenter - side * radius, secondCenter - side * radius);
+            Transform capsuleTransform = capsuleCollider.transform;
+            Vector3 scale = capsuleTransform.lossyScale;
+            center =
+                (Vector2)capsuleTransform.TransformPoint(capsuleCollider.offset) +
+                bodyPosition -
+                (Vector2)capsuleTransform.position;
+            size = Vector2.Scale(
+                capsuleCollider.size,
+                new Vector2(Mathf.Abs(scale.x), Mathf.Abs(scale.y)));
+            direction = capsuleCollider.direction;
+            angle = capsuleTransform.eulerAngles.z;
         }
 
 #if UNITY_EDITOR
         //------------------------------- Editor -------------------------------//
-
-        private void OnValidate()
-        {
-            _collisionSkin = Mathf.Max(0.001f, _collisionSkin);
-            _separationPushDistance = Mathf.Max(0f, _separationPushDistance);
-            _surfaceNormalTolerance = Mathf.Max(0f, _surfaceNormalTolerance);
-            _maximumResolutionIterations = Mathf.Max(1, _maximumResolutionIterations);
-            _maximumDepenetrationDistance = Mathf.Max(0f, _maximumDepenetrationDistance);
-            _groundedSplineSubdivisionDistance = Mathf.Max(0.01f, _groundedSplineSubdivisionDistance);
-            InitializeComponents();
-        }
 #endif
     }
 }
