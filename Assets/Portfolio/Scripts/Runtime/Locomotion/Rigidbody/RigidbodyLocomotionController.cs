@@ -71,8 +71,8 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void Initialize()
         {
-            InitializeComponents();
             InitializeModules();
+            InitializeComponents();
             InitializeEvents();
         }
 

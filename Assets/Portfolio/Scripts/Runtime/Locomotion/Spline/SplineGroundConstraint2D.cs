@@ -116,13 +116,14 @@ namespace Portfolio.Locomotion.Spline
                 SplinePathSample2D stepSample = _path.Evaluate(stepDistance);
                 Vector2 intendedDisplacement = stepSample.Position - safePosition;
                 Vector2 velocity = intendedDisplacement / Mathf.Max(Time.fixedDeltaTime, 0.0001f);
-                Vector2 resolvedDisplacement = collisionResolver.Resolve(safePosition, intendedDisplacement, ref velocity, out RaycastHit2D hit);
+                Vector2 resolvedDisplacement = collisionResolver.Resolve(safePosition, intendedDisplacement, ref velocity,
+                    walkableSlopeAngle, true, out RaycastHit2D hit);
                 safePosition += resolvedDisplacement;
 
                 if (hit.collider != null || resolvedDisplacement.sqrMagnitude + 0.000001f < intendedDisplacement.sqrMagnitude)
                 {
                     float fraction = intendedDisplacement.sqrMagnitude > 0.000001f
-                        ? Mathf.Clamp01(resolvedDisplacement.magnitude / intendedDisplacement.magnitude)
+                        ? Mathf.Clamp01(Vector2.Dot(resolvedDisplacement, intendedDisplacement) / intendedDisplacement.sqrMagnitude)
                         : 0f;
                     safePathDistance = Mathf.Lerp(safePathDistance, stepDistance, fraction);
                     blocked = true;
