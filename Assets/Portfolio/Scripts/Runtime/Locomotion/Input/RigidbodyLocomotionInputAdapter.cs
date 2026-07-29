@@ -68,8 +68,8 @@ namespace Portfolio.Locomotion.Input
                 return;
             }
 
-            InitializeComponents();
             InitializeModules();
+            InitializeComponents();
             _initialized = true;
             InitializeEvents();
             ApplyGameState(GameManager.Instance != null ? GameManager.Instance.CurrentState : GameState.Normal);

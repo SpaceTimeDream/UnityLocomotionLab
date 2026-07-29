@@ -215,7 +215,8 @@ namespace Portfolio.Locomotion.Spline
             _jump.ApplyEarlyRelease(_state);
             Vector2 motion = _state.AirborneVelocity * Time.fixedDeltaTime;
             Vector2 impactVelocity = _state.AirborneVelocity;
-            Vector2 resolvedMotion = _collisionResolver.Resolve(previousPosition, motion, ref _state.AirborneVelocity, out RaycastHit2D blockingHit);
+            Vector2 resolvedMotion = _collisionResolver.Resolve(previousPosition, motion, ref _state.AirborneVelocity,
+                _movement.WalkableSlopeAngle, false, out RaycastHit2D blockingHit);
             _state.Rising = _state.AirborneVelocity.y > 0f;
             _state.Falling = _state.AirborneVelocity.y < 0f;
 

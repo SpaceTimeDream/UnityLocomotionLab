@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 1006}
   - component: {fileID: 1007}
   - component: {fileID: 1008}
+  - component: {fileID: 1009}
   m_Layer: 0
   m_Name: SimulatedPlayerCapsule
   m_TagString: Untagged
@@ -123,15 +124,51 @@ MonoBehaviour:
   m_Enabled: 1
   m_Script: {fileID: 11500000, guid: 73d94482e9114b14968332c73761d625, type: 3}
   _collisionLayers: {serializedVersion: 2, m_Bits: 1}
-  _collisionSkin: 0.03
-  _bodyWidth: 0.72
-  _bodyHeight: 1.68
-  _bodyCenterOffset: {x: 0, y: 0.84}
-  _rayInset: 0.04
-  _horizontalRayCount: 3
-  _verticalRayCount: 3
-  _maximumResolutionIterations: 3
+  _capsuleCollider: {fileID: 1009}
+  _collisionSkin: 0.02
+  _separationPushDistance: 0.005
+  _surfaceNormalTolerance: 0.001
+  _maximumResolutionIterations: 4
+  _maximumDepenetrationDistance: 0.05
+  _groundedSplineSubdivisionDistance: 0.25
   _drawCollisionGizmos: 0
+--- !u!70 &1009
+CapsuleCollider2D:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Density: 1
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_ForceSendLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ForceReceiveLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_ContactCaptureLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_CallbackLayers:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_IsTrigger: 0
+  m_UsedByEffector: 0
+  m_CompositeOperation: 0
+  m_CompositeOrder: 0
+  m_Offset: {x: 0, y: 0.84}
+  m_Size: {x: 0.72, y: 1.68}
+  m_Direction: 0
 --- !u!1 &1010
 GameObject:
   m_ObjectHideFlags: 0
