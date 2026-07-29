@@ -62,14 +62,13 @@ namespace Portfolio.Locomotion.Rigidbody
             SurfaceProbe2D surfaceProbe,
             ExternalForceReceiver2D externalForces,
             float movementInput,
-            bool blockMovementIntoSteepSlope,
-            float facingDirection,
+            float steepSlopeBlockDirection,
             bool jumpAscentActive)
         {
-            if (blockMovementIntoSteepSlope)
+            if (!Mathf.Approximately(steepSlopeBlockDirection, 0f))
             {
-                movementInput = RemoveInputIntoSlope(movementInput, facingDirection);
-                RemoveVelocityIntoSlope(body, facingDirection);
+                movementInput = RemoveInputIntoSlope(movementInput, steepSlopeBlockDirection);
+                RemoveVelocityIntoSlope(body, steepSlopeBlockDirection);
             }
 
             if (externalForces.IsControlProtected)
@@ -249,14 +248,18 @@ namespace Portfolio.Locomotion.Rigidbody
             return Mathf.Clamp(speed, -maximumSpeed, maximumSpeed);
         }
 
-        private float RemoveInputIntoSlope(float movementInput, float facingDirection)
+        private float RemoveInputIntoSlope(float movementInput, float steepSlopeBlockDirection)
         {
-            return Mathf.Sign(movementInput) == Mathf.Sign(facingDirection) ? 0f : movementInput;
+            return movementInput * steepSlopeBlockDirection > _minimumInput
+                ? 0f
+                : movementInput;
         }
 
-        private void RemoveVelocityIntoSlope(UnityEngine.Rigidbody2D body, float facingDirection)
+        private void RemoveVelocityIntoSlope(
+            UnityEngine.Rigidbody2D body,
+            float steepSlopeBlockDirection)
         {
-            if (body.linearVelocity.x * facingDirection <= 0f)
+            if (body.linearVelocity.x * steepSlopeBlockDirection <= _minimumInput)
             {
                 return;
             }

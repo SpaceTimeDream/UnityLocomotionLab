@@ -115,7 +115,10 @@ namespace Portfolio.Locomotion.Rigidbody
             }
         }
 
-        public bool ApplyJump(UnityEngine.Rigidbody2D body, LocomotionState state, bool blockHorizontalMovement)
+        public bool ApplyJump(
+            UnityEngine.Rigidbody2D body,
+            LocomotionState state,
+            float steepSlopeBlockDirection)
         {
             if (_inAnticipationFrame)
             {
@@ -123,7 +126,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
                 if (_anticipationRemainingTime <= 0f)
                 {
-                    return ExecuteJump(body, state, blockHorizontalMovement);
+                    return ExecuteJump(body, state, steepSlopeBlockDirection);
                 }
 
                 return false;
@@ -142,7 +145,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
             if (_anticipationRemainingTime <= 0f)
             {
-                return ExecuteJump(body, state, blockHorizontalMovement);
+                return ExecuteJump(body, state, steepSlopeBlockDirection);
             }
 
             return false;
@@ -203,7 +206,10 @@ namespace Portfolio.Locomotion.Rigidbody
             return state.Grounded || CanUseCoyoteTime;
         }
 
-        private bool ExecuteJump(UnityEngine.Rigidbody2D body, LocomotionState state, bool blockHorizontalMovement)
+        private bool ExecuteJump(
+            UnityEngine.Rigidbody2D body,
+            LocomotionState state,
+            float steepSlopeBlockDirection)
         {
             if (!state.ControlEnabled || _jumpDisabled || _steepSlopeJumpRestricted)
             {
@@ -213,7 +219,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
             Vector2 velocity = body.linearVelocity;
 
-            if (blockHorizontalMovement)
+            if (velocity.x * steepSlopeBlockDirection > 0.01f)
             {
                 velocity.x = 0f;
             }
