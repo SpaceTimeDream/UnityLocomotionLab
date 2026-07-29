@@ -215,29 +215,28 @@ namespace Portfolio.Locomotion.Spline
             _jump.ApplyEarlyRelease(_state);
             Vector2 motion = _state.AirborneVelocity * Time.fixedDeltaTime;
             Vector2 impactVelocity = _state.AirborneVelocity;
-            Vector2 resolvedMotion = _collisionResolver.Resolve(previousPosition, motion, ref _state.AirborneVelocity,
+
+            // Use a local variable because properties can't be passed by ref
+            Vector2 airborneVelocity = _state.AirborneVelocity;
+            Vector2 resolvedMotion = _collisionResolver.Resolve(previousPosition, motion, ref airborneVelocity,
                 _movement.WalkableSlopeAngle, false, out RaycastHit2D blockingHit);
+            // Write back any changes to the property's backing field
+            _state.AirborneVelocity = airborneVelocity;
+
             _state.Rising = _state.AirborneVelocity.y > 0f;
             _state.Falling = _state.AirborneVelocity.y < 0f;
 
             if (blockingHit.collider != null && blockingHit.normal.y > 0.01f &&
                 _groundConstraint.TryLand(_state, blockingHit, impactVelocity, _movement.WalkableSlopeAngle))
             {
-                TranslateTo(_state.AnchorPosition);
+                // preserve resolvedMotion from before landing
+                _cachedTransform.position = previousPosition + resolvedMotion;
                 AlignVisual(false);
-
-                _jump.NotifyGrounded(true);
-
-                if (_jump.HasBufferedJump())
-                {
-                    _jump.ConsumeJump(_state);
-                }
                 return;
             }
 
-            _cachedTransform.Translate(resolvedMotion, Space.World);
-            _state.AnchorPosition = _cachedTransform.position;
-            AlignVisual(true);
+            _cachedTransform.position = previousPosition + resolvedMotion;
+            AlignVisual(false);
         }
 
         private void UpdateGroundContact()

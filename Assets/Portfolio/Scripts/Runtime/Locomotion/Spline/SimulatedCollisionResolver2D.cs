@@ -137,7 +137,7 @@ namespace Portfolio.Locomotion.Spline
                     _lastSeparationPush = separation;
                 }
 
-                remaining = Vector2.ProjectOnPlane(unresolved, hit.normal);
+                remaining = Vector3.ProjectOnPlane(unresolved, hit.normal);
             }
 
             _lastResolvedDisplacement = resolved;
