@@ -10,20 +10,25 @@ The project contains two focused movement showcases and one shared comparison sc
 
 `SimulatedSplineLocomotionDemo` uses the same controller/module flow with an internally calculated velocity. Movement is committed through `Transform.Translate`, while a kinematic `Rigidbody2D` and `CapsuleCollider2D` provide contacts, surface normals and predictive collision shape information. Rigidbody velocity and gravity do not drive the player.
 
-The simulated movement module includes explicit ground, slope and air deceleration. Its collision resolver stops grounded motion at steep surfaces without an accumulating push-back.
+The simulated movement module includes explicit ground, slope and air deceleration. Ground snapping is resolved separately from locomotion so a downward support check cannot be projected into downhill drift. Its collision resolver stops grounded motion at steep surfaces without an accumulating push-back.
 
 ## Comparison scene
 
-`LocomotionComparisonDemo` contains both implementations on one longer test course. The green player uses Rigidbody locomotion and the orange player uses simulated translate locomotion.
+`LocomotionComparisonDemo` contains both implementations on one 80-unit test course. The green player uses Rigidbody locomotion and the orange player uses simulated translate locomotion.
 
-The debug button switches the active implementation at the current collider-foot position. The course includes:
+The debug button switches the active implementation at the current collider-foot position. The runtime panel shows velocity, grounded state, slope angle, jump state and locomotion flags. A color-coded prompt identifies the active test section.
+
+The course includes:
 
 - A long acceleration and braking runway
-- Gentle uphill and downhill slopes
+- Gentle uphill and downhill slopes with a resting test
 - A crest and valley
-- Steep uphill and downhill transitions
-- A low ceiling
-- A jumpable step
+- An uphill jump-momentum test
+- A cyan low-ceiling jump test
+- A yellow jumpable step
+- Steep uphill and downhill transitions at the far end
+
+Selecting the simulated player draws its capsule, velocity, intended movement, resolved movement, surface normal, steep-slope probe and collision contacts. The comparison switcher draws labeled course-section gizmos.
 
 The orthographic camera follows only the active player's world position. Player rotation and the `0` / `180` Y-axis facing flip do not affect the camera.
 

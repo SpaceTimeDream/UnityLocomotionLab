@@ -190,9 +190,10 @@ MonoBehaviour:
     _airAcceleration: 35
     _airDeceleration: 25
     _minimumInput: 0.01
+    _groundedStopSpeed: 0.05
   _jump:
     _jumpVelocity: 12
-    _maximumJumpVelocity: 12
+    _maximumJumpVelocity: 16
     _jumpBufferTime: 0.12
     _coyoteTime: 0.1
     _jumpAnticipationDuration: 0.08
@@ -225,6 +226,8 @@ MonoBehaviour:
   _constrainZRotation: 1
   _flipVisualWithFacing: 1
   _demoResetY: -8
+  _drawSelectedGizmos: 1
+  _velocityGizmoScale: 0.12
 --- !u!50 &2103
 Rigidbody2D:
   serializedVersion: 5

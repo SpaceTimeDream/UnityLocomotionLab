@@ -190,9 +190,10 @@ MonoBehaviour:
     _airAcceleration: 35
     _airDeceleration: 25
     _minimumInput: 0.01
+    _groundedStopSpeed: 0.05
   _jump:
     _jumpVelocity: 12
-    _maximumJumpVelocity: 12
+    _maximumJumpVelocity: 16
     _jumpBufferTime: 0.12
     _coyoteTime: 0.1
     _jumpAnticipationDuration: 0.08
@@ -225,6 +226,8 @@ MonoBehaviour:
   _constrainZRotation: 1
   _flipVisualWithFacing: 1
   _demoResetY: -8
+  _drawSelectedGizmos: 1
+  _velocityGizmoScale: 0.12
 --- !u!50 &2103
 Rigidbody2D:
   serializedVersion: 5
@@ -702,16 +705,17 @@ EdgeCollider2D:
   - {x: -12, y: -1.8}
   - {x: -8, y: -2.4}
   - {x: -4, y: -2.4}
-  - {x: -1, y: 3.2}
-  - {x: 2, y: 3.2}
-  - {x: 5, y: -2.4}
-  - {x: 10, y: -2.4}
+  - {x: 0, y: -0.8}
+  - {x: 4, y: -0.8}
+  - {x: 8, y: -2.4}
   - {x: 16, y: -2.4}
   - {x: 20, y: -1.4}
   - {x: 24, y: -1.4}
-  - {x: 27, y: 1.8}
-  - {x: 30, y: 1.8}
-  - {x: 34, y: 0}
+  - {x: 30, y: -2.4}
+  - {x: 33, y: 3.2}
+  - {x: 37, y: 3.2}
+  - {x: 40, y: -2.4}
+  - {x: 48, y: -2.4}
   m_AdjacentStartPoint: {x: 0, y: 0}
   m_AdjacentEndPoint: {x: 0, y: 0}
   m_UseAdjacentStartPoint: 0
@@ -814,7 +818,7 @@ MonoBehaviour:
       spriteIndex: 0
       corner: 0
       m_CornerMode: 0
-    - position: {x: -1, y: 3.2, z: 0}
+    - position: {x: 0, y: -0.8, z: 0}
       leftTangent: {x: 0, y: 0, z: 0}
       rightTangent: {x: 0, y: 0, z: 0}
       mode: 0
@@ -822,7 +826,7 @@ MonoBehaviour:
       spriteIndex: 0
       corner: 0
       m_CornerMode: 0
-    - position: {x: 2, y: 3.2, z: 0}
+    - position: {x: 4, y: -0.8, z: 0}
       leftTangent: {x: 0, y: 0, z: 0}
       rightTangent: {x: 0, y: 0, z: 0}
       mode: 0
@@ -830,15 +834,7 @@ MonoBehaviour:
       spriteIndex: 0
       corner: 0
       m_CornerMode: 0
-    - position: {x: 5, y: -2.4, z: 0}
-      leftTangent: {x: 0, y: 0, z: 0}
-      rightTangent: {x: 0, y: 0, z: 0}
-      mode: 0
-      height: 1
-      spriteIndex: 0
-      corner: 0
-      m_CornerMode: 0
-    - position: {x: 10, y: -2.4, z: 0}
+    - position: {x: 8, y: -2.4, z: 0}
       leftTangent: {x: 0, y: 0, z: 0}
       rightTangent: {x: 0, y: 0, z: 0}
       mode: 0
@@ -870,7 +866,7 @@ MonoBehaviour:
       spriteIndex: 0
       corner: 0
       m_CornerMode: 0
-    - position: {x: 27, y: 1.8, z: 0}
+    - position: {x: 30, y: -2.4, z: 0}
       leftTangent: {x: 0, y: 0, z: 0}
       rightTangent: {x: 0, y: 0, z: 0}
       mode: 0
@@ -878,7 +874,7 @@ MonoBehaviour:
       spriteIndex: 0
       corner: 0
       m_CornerMode: 0
-    - position: {x: 30, y: 1.8, z: 0}
+    - position: {x: 33, y: 3.2, z: 0}
       leftTangent: {x: 0, y: 0, z: 0}
       rightTangent: {x: 0, y: 0, z: 0}
       mode: 0
@@ -886,7 +882,23 @@ MonoBehaviour:
       spriteIndex: 0
       corner: 0
       m_CornerMode: 0
-    - position: {x: 34, y: 0, z: 0}
+    - position: {x: 37, y: 3.2, z: 0}
+      leftTangent: {x: 0, y: 0, z: 0}
+      rightTangent: {x: 0, y: 0, z: 0}
+      mode: 0
+      height: 1
+      spriteIndex: 0
+      corner: 0
+      m_CornerMode: 0
+    - position: {x: 40, y: -2.4, z: 0}
+      leftTangent: {x: 0, y: 0, z: 0}
+      rightTangent: {x: 0, y: 0, z: 0}
+      mode: 0
+      height: 1
+      spriteIndex: 0
+      corner: 0
+      m_CornerMode: 0
+    - position: {x: 48, y: -2.4, z: 0}
       leftTangent: {x: 0, y: 0, z: 0}
       rightTangent: {x: 0, y: 0, z: 0}
       mode: 0
@@ -923,16 +935,17 @@ MonoBehaviour:
   - {x: -12, y: -1.8}
   - {x: -8, y: -2.4}
   - {x: -4, y: -2.4}
-  - {x: -1, y: 3.2}
-  - {x: 2, y: 3.2}
-  - {x: 5, y: -2.4}
-  - {x: 10, y: -2.4}
+  - {x: 0, y: -0.8}
+  - {x: 4, y: -0.8}
+  - {x: 8, y: -2.4}
   - {x: 16, y: -2.4}
   - {x: 20, y: -1.4}
   - {x: 24, y: -1.4}
-  - {x: 27, y: 1.8}
-  - {x: 30, y: 1.8}
-  - {x: 34, y: 0}
+  - {x: 30, y: -2.4}
+  - {x: 33, y: 3.2}
+  - {x: 37, y: 3.2}
+  - {x: 40, y: -2.4}
+  - {x: 48, y: -2.4}
   m_ShadowSegment: []
 --- !u!1971053207 &1031733363
 SpriteShapeRenderer:
@@ -997,8 +1010,8 @@ SpriteShapeRenderer:
   - {fileID: 21300000, guid: 608e61deb05c54660bebf5a4dd2ee02d, type: 3}
   - {fileID: 21300000, guid: 608e61deb05c54660bebf5a4dd2ee02d, type: 3}
   m_LocalAABB:
-    m_Center: {x: 1, y: 0.4, z: 0}
-    m_Extent: {x: 33, y: 3.2, z: 0}
+    m_Center: {x: 8, y: 0.4, z: 0}
+    m_Extent: {x: 40, y: 3.2, z: 0}
   m_SpriteSortPoint: 0
 --- !u!4 &1031733364
 Transform:
@@ -1408,7 +1421,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 1
   m_Sprite: {fileID: -9095717837082945937, guid: 207ee8102dd4143d288186ef0be518ee, type: 3}
-  m_Color: {r: 0.26, g: 0.32, b: 0.42, a: 1}
+  m_Color: {r: 0.05, g: 0.9, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -1499,7 +1512,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 1
   m_Sprite: {fileID: -9095717837082945937, guid: 207ee8102dd4143d288186ef0be518ee, type: 3}
-  m_Color: {r: 0.26, g: 0.32, b: 0.42, a: 1}
+  m_Color: {r: 1, g: 0.8, b: 0.05, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -1557,6 +1570,19 @@ MonoBehaviour:
   _buttonRect: {x: 16, y: 16, width: 420, height: 44}
   _rigidbodyColor: {r: 0.15, g: 1, b: 0, a: 1}
   _simulatedColor: {r: 1, g: 0.55, b: 0.2, a: 1}
+  _showRuntimePanel: 1
+  _showCoursePrompt: 1
+  _runtimePanelRect: {x: 16, y: 68, width: 420, height: 112}
+  _coursePromptRect: {x: 452, y: 16, width: 650, height: 44}
+  _drawCourseGizmos: 1
+  _courseGizmoY: 4.75
+  _courseGizmoHeight: 0.5
+  _runwayRange: {x: -32, y: -24}
+  _rollingSlopeRange: {x: -24, y: -8}
+  _uphillJumpRange: {x: -8, y: 8}
+  _lowCeilingRange: {x: 10, y: 16}
+  _jumpableStepRange: {x: 18, y: 25}
+  _steepSlopeRange: {x: 30, y: 40}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
