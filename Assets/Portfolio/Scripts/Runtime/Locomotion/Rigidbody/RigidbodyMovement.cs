@@ -13,12 +13,28 @@ namespace Portfolio.Locomotion.Rigidbody
         //------------------------------- Parameters -------------------------------//
 
         #region Components
+
+        [Header("MOVE PARAMETERS")]
         [SerializeField] private float _maximumGroundSpeed = 8f;
+        [SerializeField] private float _moveSpeedClampModifier;
         [SerializeField] private float _groundAcceleration = 70f;
         [SerializeField] private float _groundDeceleration = 90f;
+        [SerializeField] private float _slopeAcceleration = 70f;
+        [SerializeField] private float _slopeDeceleration = 90f;
         [SerializeField] private float _airAcceleration = 35f;
         [SerializeField] private float _airDeceleration = 25f;
         [SerializeField] private float _steepSlopeSlideSpeed = 4f;
+        [SerializeField] private float _slopeAdherenceSpeed = 1.5f;
+        [SerializeField] private float _minimumInput = 0.01f;
+
+        public float MaximumGroundSpeed => _maximumGroundSpeed;
+        public float MoveSpeedClampModifier => _moveSpeedClampModifier;
+        public float GroundAcceleration => _groundAcceleration;
+        public float GroundDeceleration => _groundDeceleration;
+        public float SlopeAcceleration => _slopeAcceleration;
+        public float SlopeDeceleration => _slopeDeceleration;
+        public float AirAcceleration => _airAcceleration;
+        public float AirDeceleration => _airDeceleration;
 
         #endregion
 
@@ -40,7 +56,15 @@ namespace Portfolio.Locomotion.Rigidbody
 
         //------------------------------- Core / Routines Methods -------------------------------//
 
-        public void ApplyMovement(UnityEngine.Rigidbody2D body, LocomotionState state, SurfaceProbe2D surfaceProbe, float movementInput, bool protectHorizontalMomentum, bool blockMovementIntoSteepSlope, float facingDirection)
+        public void ApplyMovement(
+            UnityEngine.Rigidbody2D body,
+            LocomotionState state,
+            SurfaceProbe2D surfaceProbe,
+            ExternalForceReceiver2D externalForces,
+            float movementInput,
+            bool blockMovementIntoSteepSlope,
+            float facingDirection,
+            bool jumpAscentActive)
         {
             if (blockMovementIntoSteepSlope)
             {
@@ -48,52 +72,181 @@ namespace Portfolio.Locomotion.Rigidbody
                 RemoveVelocityIntoSlope(body, facingDirection);
             }
 
-            if (protectHorizontalMomentum)
+            if (externalForces.IsControlProtected)
             {
                 return;
             }
-
-            Vector2 velocity = body.linearVelocity;
 
             if (!state.ControlEnabled)
             {
-                body.linearVelocity = ApplyHorizontalSpeed(velocity, 0f, state.Grounded ? _groundDeceleration : _airDeceleration);
+                ApplyDeceleration(body, state.Grounded ? _groundDeceleration : _airDeceleration);
                 return;
             }
 
+            float resistance = externalForces.Resistance;
+
             if (state.OnSteepSlope)
             {
-                body.linearVelocity = ApplySteepSlope(velocity, state, surfaceProbe, movementInput);
+                ApplySteepSlopeMovement(body, state, surfaceProbe, movementInput, resistance);
                 return;
             }
 
             if (state.Grounded && state.OnWalkableSlope)
             {
-                body.linearVelocity = ApplySlopeMovement(velocity, state, surfaceProbe, movementInput);
+                ApplySlopeMovement(body, state, surfaceProbe, movementInput, resistance);
                 return;
             }
 
-            float acceleration = Mathf.Abs(movementInput) > 0.01f
-                ? (state.Grounded ? _groundAcceleration : _airAcceleration)
-                : (state.Grounded ? _groundDeceleration : _airDeceleration);
-            float targetSpeed = movementInput * _maximumGroundSpeed;
-            body.linearVelocity = ApplyHorizontalSpeed(velocity, targetSpeed, acceleration);
+            if (state.Grounded)
+            {
+                ApplyHorizontalMovement(body, movementInput, _groundAcceleration, _groundDeceleration, resistance, true);
+                return;
+            }
+
+            if (jumpAscentActive || !externalForces.HasExternalForce)
+            {
+                ApplyHorizontalMovement(body, movementInput, _airAcceleration, _airDeceleration, resistance, false);
+            }
+        }
+
+        public void SetMoveSpeedClamp(float value)
+        {
+            _moveSpeedClampModifier = Mathf.Max(0f, value);
+        }
+
+        public void AddMoveSpeedClamp(float value)
+        {
+            _moveSpeedClampModifier = Mathf.Max(_moveSpeedClampModifier, Mathf.Abs(value));
+        }
+
+        public void ResetRuntimeState()
+        {
+            _moveSpeedClampModifier = 0f;
         }
 
         public void Validate()
         {
             _maximumGroundSpeed = Mathf.Max(0f, _maximumGroundSpeed);
+            _moveSpeedClampModifier = Mathf.Max(0f, _moveSpeedClampModifier);
             _groundAcceleration = Mathf.Max(0f, _groundAcceleration);
             _groundDeceleration = Mathf.Max(0f, _groundDeceleration);
+            _slopeAcceleration = Mathf.Max(0f, _slopeAcceleration);
+            _slopeDeceleration = Mathf.Max(0f, _slopeDeceleration);
             _airAcceleration = Mathf.Max(0f, _airAcceleration);
             _airDeceleration = Mathf.Max(0f, _airDeceleration);
             _steepSlopeSlideSpeed = Mathf.Max(0f, _steepSlopeSlideSpeed);
+            _slopeAdherenceSpeed = Mathf.Max(0f, _slopeAdherenceSpeed);
+            _minimumInput = Mathf.Max(0.0001f, _minimumInput);
         }
 
-        private Vector2 ApplyHorizontalSpeed(Vector2 velocity, float targetSpeed, float acceleration)
+        private void ApplyHorizontalMovement(
+            UnityEngine.Rigidbody2D body,
+            float movementInput,
+            float acceleration,
+            float deceleration,
+            float resistance,
+            bool grounded)
         {
-            velocity.x = Mathf.MoveTowards(velocity.x, targetSpeed, acceleration * Time.fixedDeltaTime);
-            return velocity;
+            Vector2 velocity = body.linearVelocity;
+
+            if (Mathf.Abs(movementInput) > _minimumInput)
+            {
+                float accelerationStep = movementInput * (acceleration / resistance) * Time.fixedDeltaTime;
+                velocity.x = ClampHorizontalSpeed(velocity.x + accelerationStep);
+            }
+            else
+            {
+                velocity.x = Mathf.MoveTowards(velocity.x, 0f, deceleration * Time.fixedDeltaTime);
+            }
+
+            if (grounded && velocity.y > 0f)
+            {
+                velocity.y = 0f;
+            }
+
+            body.linearVelocity = velocity;
+        }
+
+        private void ApplySlopeMovement(
+            UnityEngine.Rigidbody2D body,
+            LocomotionState state,
+            SurfaceProbe2D surfaceProbe,
+            float movementInput,
+            float resistance)
+        {
+            Vector2 tangent = GetSlopeTangent(surfaceProbe, state.SurfaceNormal, movementInput);
+            float acceleration = Mathf.Abs(movementInput) > _minimumInput ? _slopeAcceleration : _slopeDeceleration;
+            float targetSpeed = Mathf.Abs(movementInput) > _minimumInput
+                ? Mathf.Abs(ClampHorizontalSpeed(movementInput * _maximumGroundSpeed))
+                : 0f;
+            Vector2 targetVelocity = tangent * targetSpeed;
+
+            if (Mathf.Abs(movementInput) <= _minimumInput)
+            {
+                targetVelocity = -state.SurfaceNormal * _slopeAdherenceSpeed;
+            }
+            else if (tangent.y < 0f && targetVelocity.y > 0f)
+            {
+                targetVelocity.y = 0f;
+            }
+
+            body.linearVelocity = Vector2.MoveTowards(
+                body.linearVelocity,
+                targetVelocity,
+                (acceleration / resistance) * Time.fixedDeltaTime);
+        }
+
+        private void ApplySteepSlopeMovement(
+            UnityEngine.Rigidbody2D body,
+            LocomotionState state,
+            SurfaceProbe2D surfaceProbe,
+            float movementInput,
+            float resistance)
+        {
+            Vector2 downhillTangent = surfaceProbe.GetSlopeTangent(state.SurfaceNormal);
+
+            if (downhillTangent.y > 0f)
+            {
+                downhillTangent *= -1f;
+            }
+
+            bool movingDownhill = Mathf.Abs(movementInput) > _minimumInput &&
+                Mathf.Sign(movementInput) == Mathf.Sign(downhillTangent.x);
+            float requestedSpeed = movingDownhill ? Mathf.Abs(movementInput) * _maximumGroundSpeed : 0f;
+            float targetSpeed = Mathf.Max(requestedSpeed, _steepSlopeSlideSpeed);
+            Vector2 targetVelocity = downhillTangent * targetSpeed;
+
+            body.linearVelocity = Vector2.MoveTowards(
+                body.linearVelocity,
+                targetVelocity,
+                (_slopeAcceleration / resistance) * Time.fixedDeltaTime);
+            state.SetSliding(targetSpeed > _minimumInput);
+        }
+
+        private void ApplyDeceleration(UnityEngine.Rigidbody2D body, float deceleration)
+        {
+            Vector2 velocity = body.linearVelocity;
+            velocity.x = Mathf.MoveTowards(velocity.x, 0f, deceleration * Time.fixedDeltaTime);
+            body.linearVelocity = velocity;
+        }
+
+        private Vector2 GetSlopeTangent(SurfaceProbe2D surfaceProbe, Vector2 surfaceNormal, float movementInput)
+        {
+            Vector2 tangent = surfaceProbe.GetSlopeTangent(surfaceNormal);
+            Vector2 desiredDirection = new Vector2(Mathf.Sign(movementInput), 0f);
+
+            if (desiredDirection != Vector2.zero && Vector2.Dot(tangent, desiredDirection) < 0f)
+            {
+                tangent *= -1f;
+            }
+
+            return tangent;
+        }
+
+        private float ClampHorizontalSpeed(float speed)
+        {
+            float maximumSpeed = Mathf.Max(_maximumGroundSpeed, _moveSpeedClampModifier);
+            return Mathf.Clamp(speed, -maximumSpeed, maximumSpeed);
         }
 
         private float RemoveInputIntoSlope(float movementInput, float facingDirection)
@@ -111,38 +264,6 @@ namespace Portfolio.Locomotion.Rigidbody
             Vector2 velocity = body.linearVelocity;
             velocity.x = 0f;
             body.linearVelocity = velocity;
-        }
-
-        private Vector2 ApplySlopeMovement(Vector2 velocity, LocomotionState state, SurfaceProbe2D surfaceProbe, float movementInput)
-        {
-            Vector2 tangent = surfaceProbe.GetSlopeTangent(state.SurfaceNormal);
-
-            if (tangent.x < 0f)
-            {
-                tangent *= -1f;
-            }
-
-            float currentSpeed = Vector2.Dot(velocity, tangent);
-            float targetSpeed = movementInput * _maximumGroundSpeed;
-            float acceleration = Mathf.Abs(movementInput) > 0.01f ? _groundAcceleration : _groundDeceleration;
-            float nextSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, acceleration * Time.fixedDeltaTime);
-            return tangent * nextSpeed;
-        }
-
-        private Vector2 ApplySteepSlope(Vector2 velocity, LocomotionState state, SurfaceProbe2D surfaceProbe, float movementInput)
-        {
-            Vector2 tangent = surfaceProbe.GetSlopeTangent(state.SurfaceNormal);
-
-            if (tangent.y > 0f)
-            {
-                tangent *= -1f;
-            }
-
-            bool movingDownhill = Mathf.Sign(movementInput) == Mathf.Sign(tangent.x);
-            float targetSpeed = movingDownhill ? Mathf.Abs(movementInput) * _maximumGroundSpeed : 0f;
-            targetSpeed = Mathf.Max(targetSpeed, _steepSlopeSlideSpeed);
-            state.SetSliding(targetSpeed > 0.01f);
-            return tangent * targetSpeed;
         }
 
 #if UNITY_EDITOR

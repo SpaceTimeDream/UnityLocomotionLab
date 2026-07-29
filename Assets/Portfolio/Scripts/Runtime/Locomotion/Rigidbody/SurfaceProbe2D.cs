@@ -13,19 +13,30 @@ namespace Portfolio.Locomotion.Rigidbody
         //------------------------------- Parameters -------------------------------//
 
         #region Components
+
+        [Header("GROUND CHECK PARAMETERS")]
         [SerializeField] private LayerMask _groundLayers = Physics2D.DefaultRaycastLayers;
         [SerializeField] private float _probeDistance = 0.08f;
         [SerializeField] private float _probeInset = 0.04f;
-        [SerializeField] private float _maximumWalkableSlopeAngle = 45f;
+        [SerializeField] private float _risingGroundedVelocityThreshold = 0.1f;
 
-        private readonly RaycastHit2D[] _hits = new RaycastHit2D[6];
+        [Header("SLOPE CHECK PARAMETERS")]
+        [SerializeField] private float _slopeAngleThreshold = 1f;
+        [SerializeField] private float _maximumWalkableSlopeAngle = 45f;
+        [SerializeField] private float _steepSlopeJumpRestrictionAngle = 55f;
+
+        private readonly RaycastHit2D[] _hits = new RaycastHit2D[8];
         private ContactFilter2D _contactFilter;
         private bool _initialized;
         private Collider2D _surfaceCollider;
+        private Vector2 _surfaceNormal = Vector2.up;
+        private float _groundedTime;
 
-        // Properties
         public float MaximumWalkableSlopeAngle => _maximumWalkableSlopeAngle;
         public Collider2D SurfaceCollider => _surfaceCollider;
+        public float GroundedTime => _groundedTime;
+        public bool IsSteepSlopeJumpRestricted =>
+            _surfaceCollider != null && Vector2.Angle(_surfaceNormal, Vector2.up) >= _steepSlopeJumpRestrictionAngle;
 
         #endregion
 
@@ -55,15 +66,25 @@ namespace Portfolio.Locomotion.Rigidbody
 
         //------------------------------- Core / Routines Methods -------------------------------//
 
-        public void Probe(CapsuleCollider2D capsuleCollider, LocomotionState state)
+        public void Probe(
+            CapsuleCollider2D capsuleCollider,
+            UnityEngine.Rigidbody2D body,
+            LocomotionState state,
+            bool ignoreGrounding)
         {
             if (!_initialized)
             {
                 Initialize();
             }
 
+            if (ignoreGrounding || body.linearVelocity.y > _risingGroundedVelocityThreshold)
+            {
+                ClearSurface(state);
+                return;
+            }
+
             Bounds bounds = capsuleCollider.bounds;
-            float rayLength = _probeDistance + Mathf.Max(0.01f, bounds.extents.y);
+            float rayLength = bounds.extents.y + _probeDistance;
             Vector2 originCenter = bounds.center;
             Vector2 originLeft = new Vector2(bounds.min.x + _probeInset, bounds.center.y);
             Vector2 originRight = new Vector2(bounds.max.x - _probeInset, bounds.center.y);
@@ -76,20 +97,39 @@ namespace Portfolio.Locomotion.Rigidbody
 
             if (!hasHit)
             {
-                _surfaceCollider = null;
-                state.SetSurface(false, false, false, Vector2.up, 0f);
+                ClearSurface(state);
                 return;
             }
 
             _surfaceCollider = bestHit.collider;
+            _surfaceNormal = bestHit.normal;
+            _groundedTime += Time.fixedDeltaTime;
             float slopeAngle = Vector2.Angle(bestHit.normal, Vector2.up);
-            bool walkable = slopeAngle <= _maximumWalkableSlopeAngle;
-            state.SetSurface(true, walkable && slopeAngle > 0.01f, !walkable, bestHit.normal, slopeAngle);
+            bool onWalkableSlope = slopeAngle > _slopeAngleThreshold && slopeAngle <= _maximumWalkableSlopeAngle;
+            bool onSteepSlope = slopeAngle > _maximumWalkableSlopeAngle;
+            state.SetSurface(true, onWalkableSlope, onSteepSlope, bestHit.normal, slopeAngle);
         }
 
         public Vector2 GetSlopeTangent(Vector2 surfaceNormal)
         {
             return new Vector2(surfaceNormal.y, -surfaceNormal.x).normalized;
+        }
+
+        public bool IsMovingUpSlope(float movementInput, Vector2 surfaceNormal)
+        {
+            if (Mathf.Abs(movementInput) <= 0.01f)
+            {
+                return false;
+            }
+
+            Vector2 tangent = GetSlopeTangent(surfaceNormal);
+
+            if (Vector2.Dot(tangent, new Vector2(Mathf.Sign(movementInput), 0f)) < 0f)
+            {
+                tangent *= -1f;
+            }
+
+            return tangent.y > 0.01f;
         }
 
         public bool HasNearbySteepSlope(CapsuleCollider2D capsuleCollider, float facingDirection, float distance)
@@ -99,13 +139,22 @@ namespace Portfolio.Locomotion.Rigidbody
                 Initialize();
             }
 
-            int hitCount = capsuleCollider.Cast(Vector2.right * Mathf.Sign(facingDirection), _contactFilter, _hits, distance);
+            Vector2 direction = Vector2.right * Mathf.Sign(facingDirection);
+            int hitCount = capsuleCollider.Cast(direction, _contactFilter, _hits, distance);
 
             for (int i = 0; i < hitCount; i++)
             {
                 RaycastHit2D hit = _hits[i];
 
-                if (hit.collider != null && Vector2.Angle(hit.normal, Vector2.up) > _maximumWalkableSlopeAngle)
+                if (hit.collider == null || hit.collider == capsuleCollider || hit.collider.isTrigger)
+                {
+                    continue;
+                }
+
+                float slopeAngle = Vector2.Angle(hit.normal, Vector2.up);
+                bool opposesMovement = Vector2.Dot(direction, hit.normal) < -0.01f;
+
+                if (opposesMovement && slopeAngle > _maximumWalkableSlopeAngle)
                 {
                     return true;
                 }
@@ -118,7 +167,21 @@ namespace Portfolio.Locomotion.Rigidbody
         {
             _probeDistance = Mathf.Max(0.01f, _probeDistance);
             _probeInset = Mathf.Max(0f, _probeInset);
-            _maximumWalkableSlopeAngle = Mathf.Clamp(_maximumWalkableSlopeAngle, 0f, 89f);
+            _risingGroundedVelocityThreshold = Mathf.Max(0f, _risingGroundedVelocityThreshold);
+            _slopeAngleThreshold = Mathf.Clamp(_slopeAngleThreshold, 0f, 89f);
+            _maximumWalkableSlopeAngle = Mathf.Clamp(_maximumWalkableSlopeAngle, _slopeAngleThreshold, 89f);
+            _steepSlopeJumpRestrictionAngle = Mathf.Clamp(
+                _steepSlopeJumpRestrictionAngle,
+                _maximumWalkableSlopeAngle,
+                89f);
+        }
+
+        private void ClearSurface(LocomotionState state)
+        {
+            _surfaceCollider = null;
+            _surfaceNormal = Vector2.up;
+            _groundedTime = 0f;
+            state.SetSurface(false, false, false, Vector2.up, 0f);
         }
 
         private bool TryGetBestHit(Vector2 origin, float distance, Collider2D ignoredCollider, ref RaycastHit2D bestHit)
@@ -130,7 +193,12 @@ namespace Portfolio.Locomotion.Rigidbody
             {
                 RaycastHit2D hit = _hits[i];
 
-                if (hit.collider == null || hit.collider == ignoredCollider)
+                if (hit.collider == null || hit.collider == ignoredCollider || hit.collider.isTrigger)
+                {
+                    continue;
+                }
+
+                if (hit.normal.y <= 0f)
                 {
                     continue;
                 }

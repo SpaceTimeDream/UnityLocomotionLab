@@ -13,7 +13,6 @@ GameObject:
   - component: {fileID: 2001132994}
   - component: {fileID: 2001132993}
   - component: {fileID: 2001132992}
-  - component: {fileID: 2001132997}
   m_Layer: 0
   m_Name: RigidbodyPlayerCapsule
   m_TagString: Untagged
@@ -33,6 +32,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2f9f9e0c2d8a1724f9ec718170d5847d, type: 3}
   m_Name:
   m_EditorClassIdentifier:
+  _body: {fileID: 2001132994}
+  _capsuleCollider: {fileID: 2001132993}
+  _visualRoot: {fileID: 2001132996}
+  _gameInput: {fileID: 0}
   _state:
     _controlEnabled: 1
     _grounded: 0
@@ -43,17 +46,26 @@ MonoBehaviour:
     _sliding: 0
     _surfaceNormal: {x: 0, y: 1}
     _slopeAngle: 0
+    _currentState: 1
   _movement:
     _maximumGroundSpeed: 8
+    _moveSpeedClampModifier: 0
     _groundAcceleration: 70
     _groundDeceleration: 90
+    _slopeAcceleration: 70
+    _slopeDeceleration: 90
     _airAcceleration: 35
     _airDeceleration: 25
     _steepSlopeSlideSpeed: 4
+    _slopeAdherenceSpeed: 1.5
+    _minimumInput: 0.01
   _jump:
     _jumpVelocity: 12
+    _maximumJumpVelocity: 12
     _jumpBufferTime: 0.12
     _coyoteTime: 0.1
+    _jumpAnticipationDuration: 0.08
+    _groundCheckDelayFixedFrames: 8
     _enableEarlyRelease: 1
     _earlyReleaseVelocityMultiplier: 0.5
   _surfaceProbe:
@@ -62,9 +74,14 @@ MonoBehaviour:
       m_Bits: 51
     _probeDistance: 0.08
     _probeInset: 0.04
+    _risingGroundedVelocityThreshold: 0.1
+    _slopeAngleThreshold: 1
     _maximumWalkableSlopeAngle: 45
+    _steepSlopeJumpRestrictionAngle: 55
   _externalForces:
     _horizontalProtectionTime: 0.12
+    _externalForceResistance: 3
+    _settledSpeedThreshold: 0.25
   _movingPlatforms:
     _enabled: 1
   _gravityScale: 3
@@ -72,6 +89,7 @@ MonoBehaviour:
   _fallGravityMultiplier: 1.6
   _maximumFallSpeed: 18
   _steepSlopeJumpCheckDistance: 0.35
+  _flipVisualWithFacing: 1
 --- !u!70 &2001132993
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -201,17 +219,3 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2001132997
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2001132991}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4cbc918cb2124398b5499527e867d279, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  _gameInput: {fileID: 0}
-  _controller: {fileID: 2001132992}
