@@ -1,7 +1,7 @@
-using System;
 using Portfolio.Game;
 using Portfolio.Input;
 using Portfolio.Locomotion.Core;
+using System;
 using UnityEngine;
 
 namespace Portfolio.Locomotion.Rigidbody
