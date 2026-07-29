@@ -7,8 +7,35 @@ namespace Portfolio.Input
 {
     public class GameInput : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Game Pause -------------------------------//
+
+        private void OnGameStateChanged(GameState newGameState)
+        {
+            EnableInputForState(newGameState);
+        }
+
+        //------------------------------- Debugging Methods -------------------------------//
+
+        private void Debugging()
+        {
+            _gameControlsEnabled = _gameplayMap != null && _gameplayMap.enabled;
+            _systemControlsEnabled = _systemMap != null && _systemMap.enabled;
+        }
+
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
+
+        public const string MOUSE = "Mouse";
+        public const string KEYBOARD = "Keyboard";
+        public const string GAMEPAD = "Gamepad";
+
+        [Header("COMPONENTS")]
         [SerializeField] private InputActionAsset _inputActions;
+
+        [Header("INPUT HANDLER")]
+        [SerializeField] private bool _usePlayerActionGate = true;
+        [SerializeField] private bool _updateCursorForCurrentDevice;
 
         private static GameInput _instance;
         private InputActionMap _gameplayMap;
@@ -17,19 +44,50 @@ namespace Portfolio.Input
         private InputAction _jumpAction;
         private InputAction _pauseAction;
         private Vector2 _movementValue;
-        private bool _initialized;
-        private bool _callbacksBound;
+        private string _device = KEYBOARD;
 
-        // Properties
         public static GameInput Instance => _instance;
-        public Vector2 MovementValue => _movementValue;
+        public InputActionAsset InputActions => _inputActions;
+        public Vector2 MovementValue => ShouldProcessPlayerAction() ? _movementValue : Vector2.zero;
+        public bool GameControlsEnabled => _gameControlsEnabled;
+        public bool SystemControlsEnabled => _systemControlsEnabled;
+
+        public Func<bool> playerActionGate;
+
+        public delegate void MoveDelegate(InputAction.CallbackContext context);
+        public MoveDelegate moveEvent;
+
+        public delegate void JumpDelegate(InputAction.CallbackContext context);
+        public JumpDelegate jumpEvent;
+
+        public delegate void JumpCanceledDelegate(InputAction.CallbackContext context);
+        public JumpCanceledDelegate jumpCanceledEvent;
+
+        public delegate void PauseDelegate(InputAction.CallbackContext context);
+        public PauseDelegate pauseEvent;
 
         public event Action<Vector2> MovementValueChanged;
         public event Action JumpPressed;
         public event Action JumpReleased;
         public event Action PauseRequested;
 
-        // Unity Methods
+        #endregion
+
+        #region Flags
+
+        private bool _initialized;
+        private bool _eventsInitialized;
+        private bool _gameControlsBound;
+        private bool _systemControlsBound;
+        private bool _gameControlsEnabled;
+        private bool _systemControlsEnabled;
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState()
         {
@@ -60,21 +118,27 @@ namespace Portfolio.Input
                 return;
             }
 
-            BindCallbacks();
-            GameManager.GameStateChanged -= HandleGameStateChanged;
-            GameManager.GameStateChanged += HandleGameStateChanged;
-            EnableInputForState(GameManager.Instance != null ? GameManager.Instance.CurrentState : GameState.Normal);
+            InitializeEvents();
+            EnableInputForState(GameManager.Instance != null
+                ? GameManager.Instance.CurrentState
+                : GameState.Normal);
+        }
+
+        private void Update()
+        {
+            UpdateLoop();
         }
 
         private void OnDisable()
         {
-            CleanupEvents();
-            DisableMaps();
+            UnsubscribeEvents();
+            DisableControls();
         }
 
         private void OnDestroy()
         {
-            CleanupEvents();
+            UnsubscribeEvents();
+            DisableControls();
 
             if (_instance == this)
             {
@@ -82,13 +146,12 @@ namespace Portfolio.Input
             }
         }
 
-#if UNITY_EDITOR
-        private void OnValidate()
-        {
-        }
-#endif
+        #endregion
 
-        // Private Methods
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
         private void Initialize()
         {
             if (_initialized || _instance != this)
@@ -96,8 +159,8 @@ namespace Portfolio.Input
                 return;
             }
 
-            InitializeComponents();
             InitializeModules();
+            InitializeComponents();
 
             if (!ValidateInputActions())
             {
@@ -105,13 +168,11 @@ namespace Portfolio.Input
                 return;
             }
 
-            _initialized = true;
             InitializeEvents();
-            EnableInputForState(GameManager.Instance != null ? GameManager.Instance.CurrentState : GameState.Normal);
-        }
-
-        private void InitializeComponents()
-        {
+            EnableInputForState(GameManager.Instance != null
+                ? GameManager.Instance.CurrentState
+                : GameState.Normal);
+            _initialized = true;
         }
 
         private void InitializeModules()
@@ -128,58 +189,199 @@ namespace Portfolio.Input
             _pauseAction = _systemMap?.FindAction("Pause", false);
         }
 
+        private void InitializeComponents()
+        {
+        }
+
         private void InitializeEvents()
         {
-            BindCallbacks();
-            GameManager.GameStateChanged -= HandleGameStateChanged;
-            GameManager.GameStateChanged += HandleGameStateChanged;
+            UnsubscribeEvents();
+            BindDefaultGameControls(true);
+            BindDefaultSystemControls(true);
+            GameManager.GameStateChanged += OnGameStateChanged;
+            _eventsInitialized = true;
         }
 
-        private bool ValidateInputActions()
+        private void UnsubscribeEvents()
         {
-            if (_inputActions != null && _gameplayMap != null && _systemMap != null && _moveAction != null && _jumpAction != null && _pauseAction != null)
+            if (_eventsInitialized)
             {
-                return true;
+                BindDefaultGameControls(false);
+                BindDefaultSystemControls(false);
             }
 
-            Debug.LogError("GameInput requires an InputActionAsset with Gameplay/Move, Gameplay/Jump and System/Pause actions.", this);
-            return false;
+            GameManager.GameStateChanged -= OnGameStateChanged;
+            _eventsInitialized = false;
         }
 
-        private void BindCallbacks()
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
+
+        public void BindPlayerMoveAction(bool value)
         {
-            if (_callbacksBound || !ValidateInputActions())
+            if (_moveAction == null)
             {
                 return;
             }
 
-            _moveAction.performed += HandleMovePerformed;
-            _moveAction.canceled += HandleMoveCanceled;
-            _jumpAction.started += HandleJumpStarted;
-            _jumpAction.canceled += HandleJumpCanceled;
-            _pauseAction.performed += HandlePausePerformed;
-            _callbacksBound = true;
+            _moveAction.performed -= MovePerformedHandler;
+            _moveAction.canceled -= MoveCanceledHandler;
+
+            if (value)
+            {
+                _moveAction.performed += MovePerformedHandler;
+                _moveAction.canceled += MoveCanceledHandler;
+            }
         }
 
-        private void EnableInputForState(GameState state)
+        public void BindPlayerJumpAction(bool value)
         {
-            _systemMap.Enable();
-
-            if (state == GameState.Paused)
+            if (_jumpAction == null)
             {
-                PublishMovement(Vector2.zero, true);
-                _gameplayMap.Disable();
                 return;
             }
 
-            _gameplayMap.Enable();
+            _jumpAction.started -= JumpStartedHandler;
+            _jumpAction.canceled -= JumpCanceledHandler;
+
+            if (value)
+            {
+                _jumpAction.started += JumpStartedHandler;
+                _jumpAction.canceled += JumpCanceledHandler;
+            }
         }
 
-        private void DisableMaps()
+        public void BindGamePauseAction(bool value)
+        {
+            if (_pauseAction == null)
+            {
+                return;
+            }
+
+            _pauseAction.started -= PauseStartedHandler;
+
+            if (value)
+            {
+                _pauseAction.started += PauseStartedHandler;
+            }
+        }
+
+        public void BindDefaultGameControls(bool value)
+        {
+            BindPlayerMoveAction(value);
+            BindPlayerJumpAction(value);
+            _gameControlsBound = value;
+        }
+
+        public void BindDefaultSystemControls(bool value)
+        {
+            BindGamePauseAction(value);
+            _systemControlsBound = value;
+        }
+
+        public void DisableControls()
         {
             PublishMovement(Vector2.zero, true);
             _gameplayMap?.Disable();
             _systemMap?.Disable();
+            Debugging();
+        }
+
+        public void EnableGameControls()
+        {
+            _systemMap?.Enable();
+            _gameplayMap?.Enable();
+            Debugging();
+        }
+
+        public void EnableSystemControls()
+        {
+            PublishMovement(Vector2.zero, true);
+            _gameplayMap?.Disable();
+            _systemMap?.Enable();
+            Debugging();
+        }
+
+        public void UnbindEvents()
+        {
+            moveEvent = null;
+            jumpEvent = null;
+            jumpCanceledEvent = null;
+            pauseEvent = null;
+            MovementValueChanged = null;
+            JumpPressed = null;
+            JumpReleased = null;
+            PauseRequested = null;
+        }
+
+        public string GetCurrentDevice()
+        {
+            return _device;
+        }
+
+        private void UpdateLoop()
+        {
+            Debugging();
+
+            if (_updateCursorForCurrentDevice)
+            {
+                UpdateCursor();
+            }
+        }
+
+        private void EnableInputForState(GameState state)
+        {
+            if (!ValidateInputActions())
+            {
+                return;
+            }
+
+            if (!_gameControlsBound)
+            {
+                BindDefaultGameControls(true);
+            }
+
+            if (!_systemControlsBound)
+            {
+                BindDefaultSystemControls(true);
+            }
+
+            if (state == GameState.Paused)
+            {
+                EnableSystemControls();
+                return;
+            }
+
+            EnableGameControls();
+        }
+
+        private bool ValidateInputActions()
+        {
+            if (_inputActions != null &&
+                _gameplayMap != null &&
+                _systemMap != null &&
+                _moveAction != null &&
+                _jumpAction != null &&
+                _pauseAction != null)
+            {
+                return true;
+            }
+
+            Debug.LogError(
+                "GameInput requires Gameplay/Move, Gameplay/Jump and System/Pause actions.",
+                this);
+            return false;
+        }
+
+        private bool ShouldProcessPlayerAction()
+        {
+            if (!_usePlayerActionGate)
+            {
+                return true;
+            }
+
+            return playerActionGate?.Invoke() ?? true;
         }
 
         private void PublishMovement(Vector2 movementValue, bool forcePublish = false)
@@ -193,50 +395,99 @@ namespace Portfolio.Input
             MovementValueChanged?.Invoke(_movementValue);
         }
 
-        private void HandleMovePerformed(InputAction.CallbackContext context)
+        private void SetCurrentDevice(InputAction.CallbackContext context)
         {
-            PublishMovement(context.ReadValue<Vector2>());
+            InputDevice device = context.control?.device;
+
+            if (device is Gamepad)
+            {
+                _device = GAMEPAD;
+            }
+            else if (device is Mouse)
+            {
+                _device = MOUSE;
+            }
+            else if (device is Keyboard)
+            {
+                _device = KEYBOARD;
+            }
+            else if (device != null)
+            {
+                _device = device.displayName;
+            }
         }
 
-        private void HandleMoveCanceled(InputAction.CallbackContext context)
+        private void UpdateCursor()
         {
+            bool pointerDevice = _device == MOUSE || _device == KEYBOARD;
+            Cursor.visible = pointerDevice;
+            Cursor.lockState = pointerDevice ? CursorLockMode.None : CursorLockMode.Locked;
+        }
+
+        private void MovePerformedHandler(InputAction.CallbackContext context)
+        {
+            SetCurrentDevice(context);
+
+            if (!ShouldProcessPlayerAction())
+            {
+                PublishMovement(Vector2.zero, true);
+                return;
+            }
+
+            PublishMovement(context.ReadValue<Vector2>());
+            moveEvent?.Invoke(context);
+        }
+
+        private void MoveCanceledHandler(InputAction.CallbackContext context)
+        {
+            SetCurrentDevice(context);
             PublishMovement(Vector2.zero);
         }
 
-        private void HandleJumpStarted(InputAction.CallbackContext context)
+        private void JumpStartedHandler(InputAction.CallbackContext context)
         {
+            SetCurrentDevice(context);
+
+            if (!ShouldProcessPlayerAction())
+            {
+                return;
+            }
+
+            jumpEvent?.Invoke(context);
             JumpPressed?.Invoke();
         }
 
-        private void HandleJumpCanceled(InputAction.CallbackContext context)
+        private void JumpCanceledHandler(InputAction.CallbackContext context)
         {
+            SetCurrentDevice(context);
+
+            if (!ShouldProcessPlayerAction())
+            {
+                return;
+            }
+
+            jumpCanceledEvent?.Invoke(context);
             JumpReleased?.Invoke();
         }
 
-        private void HandlePausePerformed(InputAction.CallbackContext context)
+        private void PauseStartedHandler(InputAction.CallbackContext context)
         {
+            SetCurrentDevice(context);
+            pauseEvent?.Invoke(context);
             PauseRequested?.Invoke();
             GameManager.Instance?.TogglePause();
         }
 
-        private void HandleGameStateChanged(GameState state)
-        {
-            EnableInputForState(state);
-        }
+#if UNITY_EDITOR
+        //------------------------------- Editor -------------------------------//
 
-        private void CleanupEvents()
+        private void OnValidate()
         {
-            if (_callbacksBound)
+            if (!Application.isPlaying)
             {
-                _moveAction.performed -= HandleMovePerformed;
-                _moveAction.canceled -= HandleMoveCanceled;
-                _jumpAction.started -= HandleJumpStarted;
-                _jumpAction.canceled -= HandleJumpCanceled;
-                _pauseAction.performed -= HandlePausePerformed;
-                _callbacksBound = false;
+                InitializeModules();
             }
-
-            GameManager.GameStateChanged -= HandleGameStateChanged;
         }
+#endif
     }
 }

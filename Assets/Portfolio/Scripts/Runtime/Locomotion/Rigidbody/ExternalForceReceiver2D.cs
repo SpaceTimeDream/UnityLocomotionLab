@@ -1,3 +1,4 @@
+using Portfolio.Locomotion.Core;
 using UnityEngine;
 
 namespace Portfolio.Locomotion.Rigidbody
@@ -12,12 +13,20 @@ namespace Portfolio.Locomotion.Rigidbody
         //------------------------------- Parameters -------------------------------//
 
         #region Components
+
+        [Header("EXTERNAL FORCE PARAMETERS")]
         [SerializeField] private float _horizontalProtectionTime = 0.12f;
+        [SerializeField] private float _externalForceResistance = 3f;
+        [SerializeField] private float _settledSpeedThreshold = 0.25f;
 
         private float _protectedUntilTime;
+        private bool _hasExternalForce;
+        private bool _clearOnGrounded;
 
-        // Properties
+        public bool HasExternalForce => _hasExternalForce;
         public bool IsHorizontalProtected => Time.time < _protectedUntilTime;
+        public bool IsControlProtected => _hasExternalForce && IsHorizontalProtected;
+        public float Resistance => _hasExternalForce ? Mathf.Max(1f, _externalForceResistance) : 1f;
 
         #endregion
 
@@ -38,43 +47,85 @@ namespace Portfolio.Locomotion.Rigidbody
         #endregion
 
         //------------------------------- Core / Routines Methods -------------------------------//
-        public void AddImpulse(UnityEngine.Rigidbody2D body, Vector2 impulse, bool protectHorizontalMomentum = true)
+
+        public void AddImpulse(
+            UnityEngine.Rigidbody2D body,
+            Vector2 impulse,
+            bool protectHorizontalMomentum = true,
+            bool clearOnGrounded = false)
         {
             body.AddForce(impulse, ForceMode2D.Impulse);
-            ProtectHorizontalMomentum(protectHorizontalMomentum);
+            BeginExternalForce(protectHorizontalMomentum, clearOnGrounded);
         }
 
-        public void AddVelocity(UnityEngine.Rigidbody2D body, Vector2 velocity, bool protectHorizontalMomentum = true)
+        public void AddVelocity(
+            UnityEngine.Rigidbody2D body,
+            Vector2 velocity,
+            bool protectHorizontalMomentum = true,
+            bool clearOnGrounded = false)
         {
             body.linearVelocity += velocity;
-            ProtectHorizontalMomentum(protectHorizontalMomentum);
+            BeginExternalForce(protectHorizontalMomentum, clearOnGrounded);
         }
 
-        public void SetVelocity(UnityEngine.Rigidbody2D body, Vector2 velocity, bool protectHorizontalMomentum = true)
+        public void SetVelocity(
+            UnityEngine.Rigidbody2D body,
+            Vector2 velocity,
+            bool protectHorizontalMomentum = true,
+            bool clearOnGrounded = false)
         {
             body.linearVelocity = velocity;
-            ProtectHorizontalMomentum(protectHorizontalMomentum);
+            BeginExternalForce(protectHorizontalMomentum, clearOnGrounded);
+        }
+
+        public void UpdateRuntimeState(UnityEngine.Rigidbody2D body, LocomotionState state)
+        {
+            if (!_hasExternalForce || IsHorizontalProtected)
+            {
+                return;
+            }
+
+            if (_clearOnGrounded && state.Grounded)
+            {
+                ClearRuntimeState();
+                return;
+            }
+
+            if (state.Grounded && body.linearVelocity.sqrMagnitude <= _settledSpeedThreshold * _settledSpeedThreshold)
+            {
+                ClearRuntimeState();
+            }
         }
 
         public void ClearRuntimeState()
         {
             _protectedUntilTime = 0f;
+            _hasExternalForce = false;
+            _clearOnGrounded = false;
         }
 
         public void Validate()
         {
             _horizontalProtectionTime = Mathf.Max(0f, _horizontalProtectionTime);
+            _externalForceResistance = Mathf.Max(1f, _externalForceResistance);
+            _settledSpeedThreshold = Mathf.Max(0f, _settledSpeedThreshold);
         }
 
-        private void ProtectHorizontalMomentum(bool protectHorizontalMomentum)
+        private void BeginExternalForce(bool protectHorizontalMomentum, bool clearOnGrounded)
         {
-            if (!protectHorizontalMomentum)
-            {
-                return;
-            }
+            _hasExternalForce = true;
+            _clearOnGrounded = clearOnGrounded;
 
-            _protectedUntilTime = Time.time + _horizontalProtectionTime;
+            if (protectHorizontalMomentum)
+            {
+                _protectedUntilTime = Mathf.Max(_protectedUntilTime, Time.time + _horizontalProtectionTime);
+            }
+            else
+            {
+                _protectedUntilTime = 0f;
+            }
         }
+
 #if UNITY_EDITOR
         //------------------------------- Editor -------------------------------//
 #endif
