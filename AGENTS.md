@@ -20,3 +20,4 @@
 - Use foldouts for grouped inspector sections when the inspector has multiple concerns.
 - Clean up editor state when needed.
 - Use Undo APIs for direct object changes.
+- Access shared editor styles statically through `CustomEditorStyles`; do not construct or cache style-provider instances.

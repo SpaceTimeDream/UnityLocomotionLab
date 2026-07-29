@@ -1,214 +1,203 @@
-using UnityEditor;
-using UnityEngine;
-using System.Collections.Generic;
+//using UnityEditor;
+//using UnityEngine;
+//using System.Collections.Generic;
+//using Portfolio.Editor.Shared;
 
-[CustomEditor(typeof(MonoBehaviour), true)]
-public class EditorTemplate : Editor
-{
-    //------------------------------- Constants -------------------------------//
+//[CustomEditor(typeof(MonoBehaviour), true)]
+//public class EditorTemplate : Editor
+//{
+//    //------------------------------- Constants -------------------------------//
 
-    private const string ComponentsFoldoutKey = "Components";
-    private const string VfxFoldoutKey = "VFX";
+//    private const string ComponentsFoldoutKey = "Components";
+//    private const string VfxFoldoutKey = "VFX";
 
-    //------------------------------- Flags & SerializedProperties -------------------------------//
+//    //------------------------------- Flags & SerializedProperties -------------------------------//
 
-    protected SerializedProperty _exampleProp;
+//    protected SerializedProperty _exampleProp;
 
-    //------------------------------- Internal Editors -------------------------------//
+//    //------------------------------- Internal Editors -------------------------------//
 
-    protected Editor _baseEditor;
+//    protected Editor _baseEditor;
 
-    //------------------------------- GUI Styles -------------------------------//
+//    //------------------------------- State -------------------------------//
 
-    //protected CustomEditorStyles _styles;
+//    protected Dictionary<string, bool> _foldouts = new Dictionary<string, bool>();
+//    private bool _isInitialized;
 
-    //------------------------------- State -------------------------------//
+//    //------------------------------- Unity -------------------------------//
 
-    protected Dictionary<string, bool> _foldouts = new Dictionary<string, bool>();
-    private bool _isInitialized;
+//    #region Unity
 
-    //------------------------------- Unity -------------------------------//
+//    protected virtual void OnEnable()
+//    {
+//        if (!HasValidTargets())
+//            return;
 
-    #region Unity
+//        CacheSerializedProperties();
+//        InitializeEditors();
+//        InitializeFoldouts();
+//        SubscribeEvents();
+//        _isInitialized = true;
+//    }
 
-    protected virtual void OnEnable()
-    {
-        if (!HasValidTargets())
-            return;
+//    protected virtual void OnDisable()
+//    {
+//        UnsubscribeEvents();
+//        CleanupEditors();
+//        _isInitialized = false;
+//    }
 
-        CacheSerializedProperties();
-        InitializeEditors();
-        InitializeStyles();
-        InitializeFoldouts();
-        SubscribeEvents();
-        _isInitialized = true;
-    }
+//    public override void OnInspectorGUI()
+//    {
+//        if (!_isInitialized || !HasValidTargets())
+//            return;
 
-    protected virtual void OnDisable()
-    {
-        UnsubscribeEvents();
-        CleanupEditors();
-        _isInitialized = false;
-    }
+//        serializedObject.Update();
 
-    public override void OnInspectorGUI()
-    {
-        if (!_isInitialized || !HasValidTargets())
-            return;
+//        DrawChecks();
+//        DrawComponents();
+//        DrawVfx();
+//        DrawDefaultInspectorFallback();
 
-        serializedObject.Update();
+//        serializedObject.ApplyModifiedProperties();
+//    }
 
-        DrawChecks();
-        DrawComponents();
-        DrawVfx();
-        DrawDefaultInspectorFallback();
+//    #endregion
 
-        serializedObject.ApplyModifiedProperties();
-    }
+//    //------------------------------- Cache -------------------------------//
 
-    #endregion
+//    protected virtual void CacheSerializedProperties()
+//    {
+//        _exampleProp = serializedObject.FindProperty("_example");
+//    }
 
-    //------------------------------- Cache -------------------------------//
+//    //------------------------------- Editors -------------------------------//
 
-    protected virtual void CacheSerializedProperties()
-    {
-        _exampleProp = serializedObject.FindProperty("_example");
-    }
+//    protected virtual void InitializeEditors()
+//    {
+//        if (_baseEditor == null && target != null)
+//            _baseEditor = CreateEditor(target, typeof(Editor));
+//    }
 
-    //------------------------------- Editors -------------------------------//
+//    protected virtual void CleanupEditors()
+//    {
+//        if (_baseEditor != null)
+//            DestroyImmediate(_baseEditor);
+//    }
 
-    protected virtual void InitializeEditors()
-    {
-        if (_baseEditor == null && target != null)
-            _baseEditor = CreateEditor(target, typeof(Editor));
-    }
+//    //------------------------------- Foldouts -------------------------------//
 
-    protected virtual void CleanupEditors()
-    {
-        if (_baseEditor != null)
-            DestroyImmediate(_baseEditor);
-    }
+//    protected virtual void InitializeFoldouts()
+//    {
+//        EnsureFoldout(ComponentsFoldoutKey, true);
+//        EnsureFoldout(VfxFoldoutKey, false);
+//    }
 
-    //------------------------------- Styles -------------------------------//
+//    protected void EnsureFoldout(string key, bool defaultValue)
+//    {
+//        if (!_foldouts.ContainsKey(key))
+//            _foldouts.Add(key, defaultValue);
+//    }
 
-    protected virtual void InitializeStyles()
-    {
-        //_styles ??= new CustomEditorStyles();
-    }
+//    //------------------------------- Events -------------------------------//
 
-    //------------------------------- Foldouts -------------------------------//
+//    protected virtual void SubscribeEvents()
+//    {
+//        SceneView.duringSceneGui += OnSceneGUI;
+//    }
 
-    protected virtual void InitializeFoldouts()
-    {
-        EnsureFoldout(ComponentsFoldoutKey, true);
-        EnsureFoldout(VfxFoldoutKey, false);
-    }
+//    protected virtual void UnsubscribeEvents()
+//    {
+//        SceneView.duringSceneGui -= OnSceneGUI;
+//    }
 
-    protected void EnsureFoldout(string key, bool defaultValue)
-    {
-        if (!_foldouts.ContainsKey(key))
-            _foldouts.Add(key, defaultValue);
-    }
+//    //------------------------------- Draw -------------------------------//
 
-    //------------------------------- Events -------------------------------//
+//    protected virtual void DrawChecks()
+//    {
+//    }
 
-    protected virtual void SubscribeEvents()
-    {
-        SceneView.duringSceneGui += OnSceneGUI;
-    }
+//    protected virtual void DrawComponents()
+//    {
+//        DrawFoldoutSection(
+//            ComponentsFoldoutKey,
+//            () =>
+//            {
+//                if (_exampleProp != null)
+//                    EditorGUILayout.PropertyField(_exampleProp);
+//            }
+//        );
+//    }
 
-    protected virtual void UnsubscribeEvents()
-    {
-        SceneView.duringSceneGui -= OnSceneGUI;
-    }
+//    protected virtual void DrawVfx()
+//    {
+//        DrawFoldoutSection(
+//            VfxFoldoutKey,
+//            () =>
+//            {
+//            }
+//        );
+//    }
 
-    //------------------------------- Draw -------------------------------//
+//    protected virtual void DrawDefaultInspectorFallback()
+//    {
+//        if (_baseEditor != null)
+//            _baseEditor.OnInspectorGUI();
+//    }
 
-    protected virtual void DrawChecks()
-    {
-    }
+//    //------------------------------- Scene -------------------------------//
 
-    protected virtual void DrawComponents()
-    {
-        DrawFoldoutSection(
-            ComponentsFoldoutKey,
-            () =>
-            {
-                if (_exampleProp != null)
-                    EditorGUILayout.PropertyField(_exampleProp);
-            }
-        );
-    }
+//    protected virtual void OnSceneGUI(SceneView sceneView)
+//    {
+//    }
 
-    protected virtual void DrawVfx()
-    {
-        DrawFoldoutSection(
-            VfxFoldoutKey,
-            () =>
-            {
-            }
-        );
-    }
+//    //------------------------------- Helpers -------------------------------//
 
-    protected virtual void DrawDefaultInspectorFallback()
-    {
-        if (_baseEditor != null)
-            _baseEditor.OnInspectorGUI();
-    }
+//    protected void DrawFoldoutSection(string key, System.Action draw)
+//    {
+//        _foldouts[key] = EditorGUILayout.Foldout(
+//            _foldouts[key],
+//            key,
+//            true,
+//            CustomEditorStyles.FoldoutStyle
+//        );
 
-    //------------------------------- Scene -------------------------------//
+//        if (!_foldouts[key])
+//            return;
 
-    protected virtual void OnSceneGUI(SceneView sceneView)
-    {
-    }
+//        EditorGUI.indentLevel++;
+//        draw?.Invoke();
+//        EditorGUI.indentLevel--;
+//    }
 
-    //------------------------------- Helpers -------------------------------//
+//    protected void RecordTarget(string label)
+//    {
+//        if (target == null)
+//            return;
 
-    protected void DrawFoldoutSection(string key, System.Action draw)
-    {
-        _foldouts[key] = EditorGUILayout.Foldout(
-            _foldouts[key],
-            key,
-            true
-            //_styles.HeaderStyle2
-        );
+//        Undo.RecordObject(target, label);
+//        EditorUtility.SetDirty(target);
+//    }
 
-        if (!_foldouts[key])
-            return;
+//    private bool HasValidTargets()
+//    {
+//        if (target == null || targets == null || targets.Length == 0 || targets[0] == null)
+//            return false;
 
-        EditorGUI.indentLevel++;
-        draw?.Invoke();
-        EditorGUI.indentLevel--;
-    }
+//        for (int i = 0; i < targets.Length; i++)
+//        {
+//            if (targets[i] == null)
+//                return false;
+//        }
 
-    protected void RecordTarget(string label)
-    {
-        if (target == null)
-            return;
+//        return true;
+//    }
 
-        Undo.RecordObject(target, label);
-        EditorUtility.SetDirty(target);
-    }
+//    protected void ValidateList<T>(List<T> list) where T : Object
+//    {
+//        if (list == null)
+//            return;
 
-    private bool HasValidTargets()
-    {
-        if (target == null || targets == null || targets.Length == 0 || targets[0] == null)
-            return false;
-
-        for (int i = 0; i < targets.Length; i++)
-        {
-            if (targets[i] == null)
-                return false;
-        }
-
-        return true;
-    }
-
-    protected void ValidateList<T>(List<T> list) where T : Object
-    {
-        if (list == null)
-            return;
-
-        list.RemoveAll(item => item == null);
-    }
-}
+//        list.RemoveAll(item => item == null);
+//    }
+//}
