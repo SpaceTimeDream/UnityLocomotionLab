@@ -15,12 +15,12 @@ namespace Portfolio.Locomotion.Rigidbody
         #region Components
 
         [Header("JUMP PARAMETERS")]
-        [SerializeField] private float _jumpVelocity = 12f;
-        [SerializeField] private float _maximumJumpVelocity = 12f;
+        [SerializeField] private float _jumpVelocity = 13.3f;
+        [SerializeField] private float _maximumJumpVelocity = 13.3f;
         [SerializeField] private float _jumpBufferTime = 0.12f;
         [SerializeField] private float _coyoteTime = 0.1f;
-        [SerializeField] private float _jumpAnticipationDuration = 0.08f;
-        [SerializeField] private int _groundCheckDelayFixedFrames = 8;
+        [SerializeField] private float _jumpAnticipationDuration = 0.04f;
+        [SerializeField] private int _groundCheckDelayFixedFrames = 5;
         [SerializeField] private bool _enableEarlyRelease = true;
         [SerializeField] private float _earlyReleaseVelocityMultiplier = 0.5f;
 

@@ -21,8 +21,8 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private float _groundDeceleration = 90f;
         [SerializeField] private float _slopeAcceleration = 70f;
         [SerializeField] private float _slopeDeceleration = 90f;
-        [SerializeField] private float _airAcceleration = 35f;
-        [SerializeField] private float _airDeceleration = 25f;
+        [SerializeField] private float _airAcceleration = 38f;
+        [SerializeField] private float _airDeceleration = 40f;
         [SerializeField] private float _steepSlopeSlideSpeed = 4f;
         [SerializeField] private float _slopeAdherenceSpeed = 1.5f;
         [SerializeField] private float _minimumInput = 0.01f;

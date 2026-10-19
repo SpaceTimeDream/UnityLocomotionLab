@@ -44,10 +44,10 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private MovingPlatformTracker2D _movingPlatforms = new MovingPlatformTracker2D();
 
         [Header("GRAVITY PARAMETERS")]
-        [SerializeField] private float _gravityScale = 3f;
-        [SerializeField] private float _jumpAscentGravityMultiplier = 1f;
-        [SerializeField] private float _fallGravityMultiplier = 1.6f;
-        [SerializeField] private float _maximumFallSpeed = 18f;
+        [SerializeField] private float _gravityScale = 3.4f;
+        [SerializeField] private float _jumpAscentGravityMultiplier = 1.1f;
+        [SerializeField] private float _fallGravityMultiplier = 2.1f;
+        [SerializeField] private float _maximumFallSpeed = 22f;
 
         [Header("SLOPE PARAMETERS")]
         [SerializeField] private float _steepSlopeJumpCheckDistance = 0.35f;
