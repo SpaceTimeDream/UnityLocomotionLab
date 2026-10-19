@@ -26,6 +26,7 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private float _steepSlopeJumpRestrictionAngle = 55f;
 
         private readonly RaycastHit2D[] _hits = new RaycastHit2D[8];
+        private readonly ContactPoint2D[] _contacts = new ContactPoint2D[8];
         private ContactFilter2D _contactFilter;
         private bool _initialized;
         private Collider2D _surfaceCollider;
@@ -83,6 +84,22 @@ namespace Portfolio.Locomotion.Rigidbody
                 return;
             }
 
+            if (TryGetBodyContact(
+                body,
+                capsuleCollider,
+                out Collider2D contactCollider,
+                out Vector2 contactNormal))
+            {
+                if (IsSeparatingFromSurface(body.linearVelocity, contactNormal))
+                {
+                    ClearSurface(state);
+                    return;
+                }
+
+                ApplySurface(contactCollider, contactNormal, state);
+                return;
+            }
+
             Bounds bounds = capsuleCollider.bounds;
             float rayLength = bounds.extents.y + _probeDistance;
             Vector2 originCenter = bounds.center;
@@ -127,13 +144,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 return;
             }
 
-            _surfaceCollider = bestHit.collider;
-            _surfaceNormal = bestHit.normal;
-            _groundedTime += Time.fixedDeltaTime;
-            float slopeAngle = Vector2.Angle(bestHit.normal, Vector2.up);
-            bool onWalkableSlope = slopeAngle > _slopeAngleThreshold && slopeAngle <= _maximumWalkableSlopeAngle;
-            bool onSteepSlope = slopeAngle > _maximumWalkableSlopeAngle;
-            state.SetSurface(true, onWalkableSlope, onSteepSlope, bestHit.normal, slopeAngle);
+            ApplySurface(bestHit.collider, bestHit.normal, state);
         }
 
         public Vector2 GetSlopeTangent(Vector2 surfaceNormal)
@@ -211,6 +222,79 @@ namespace Portfolio.Locomotion.Rigidbody
             _surfaceNormal = Vector2.up;
             _groundedTime = 0f;
             state.SetSurface(false, false, false, Vector2.up, 0f);
+        }
+
+        private bool TryGetBodyContact(
+            UnityEngine.Rigidbody2D body,
+            CapsuleCollider2D capsuleCollider,
+            out Collider2D surfaceCollider,
+            out Vector2 surfaceNormal)
+        {
+            surfaceCollider = null;
+            surfaceNormal = Vector2.up;
+
+            if (body == null)
+            {
+                return false;
+            }
+
+            int contactCount = body.GetContacts(_contactFilter, _contacts);
+            float bestNormalY = 0.01f;
+            float centerY = capsuleCollider.bounds.center.y;
+
+            for (int i = 0; i < contactCount; i++)
+            {
+                ContactPoint2D contact = _contacts[i];
+                Collider2D collider = contact.collider == capsuleCollider
+                    ? contact.otherCollider
+                    : contact.collider;
+
+                if (!IsValidCollider(collider, capsuleCollider) ||
+                    contact.point.y > centerY ||
+                    contact.normal.y <= bestNormalY)
+                {
+                    continue;
+                }
+
+                bestNormalY = contact.normal.y;
+                surfaceCollider = collider;
+                surfaceNormal = contact.normal;
+            }
+
+            return surfaceCollider != null;
+        }
+
+        private void ApplySurface(
+            Collider2D surfaceCollider,
+            Vector2 surfaceNormal,
+            LocomotionState state)
+        {
+            float slopeAngle = Vector2.Angle(surfaceNormal, Vector2.up);
+            bool onWalkableSlope = surfaceNormal.y > 0f &&
+                slopeAngle > _slopeAngleThreshold &&
+                slopeAngle <= _maximumWalkableSlopeAngle;
+            bool onSteepSlope = surfaceNormal.y > 0f &&
+                slopeAngle > _maximumWalkableSlopeAngle;
+
+            _surfaceCollider = surfaceCollider;
+            _surfaceNormal = surfaceNormal.normalized;
+            _groundedTime += Time.fixedDeltaTime;
+            state.SetSurface(
+                true,
+                onWalkableSlope,
+                onSteepSlope,
+                _surfaceNormal,
+                slopeAngle);
+        }
+
+        private bool IsValidCollider(
+            Collider2D collider,
+            Collider2D characterCollider)
+        {
+            return collider != null &&
+                collider != characterCollider &&
+                !collider.isTrigger &&
+                collider.attachedRigidbody != characterCollider.attachedRigidbody;
         }
 
         private void CollectBestSupportHits(

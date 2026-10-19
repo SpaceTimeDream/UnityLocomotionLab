@@ -42,11 +42,13 @@ namespace Portfolio.Locomotion.Spline
         [SerializeField] private SplineGroundProbe2D _surfaceProbe = new SplineGroundProbe2D();
         [SerializeField] private SimulatedCollisionResolver2D _collisionResolver =
             new SimulatedCollisionResolver2D();
+        [SerializeField] private SimulatedSplinePlatformTracker2D _movingPlatforms =
+            new SimulatedSplinePlatformTracker2D();
 
         [Header("GRAVITY PARAMETERS")]
-        [SerializeField] private float _gravity = 28f;
-        [SerializeField] private float _jumpAscentGravityMultiplier = 1f;
-        [SerializeField] private float _fallGravityMultiplier = 1.6f;
+        [SerializeField] private float _gravity = 33.35f;
+        [SerializeField] private float _jumpAscentGravityMultiplier = 1.1f;
+        [SerializeField] private float _fallGravityMultiplier = 2.1f;
         [SerializeField] private float _maximumFallSpeed = 22f;
 
         [Header("SLOPE PARAMETERS")]
@@ -89,6 +91,7 @@ namespace Portfolio.Locomotion.Spline
         public SimulatedSplineJump Jump => _jump;
         public SplineGroundProbe2D SurfaceProbe => _surfaceProbe;
         public SimulatedCollisionResolver2D CollisionResolver => _collisionResolver;
+        public SimulatedSplinePlatformTracker2D MovingPlatforms => _movingPlatforms;
         public Vector2 Velocity => _velocity;
         public float MovementInput => _movementInput;
         public float FacingDirection => _facingDirection;
@@ -311,6 +314,7 @@ namespace Portfolio.Locomotion.Spline
             _state.ResetRuntimeState();
             _movement.ResetRuntimeState();
             _jump.ResetRuntimeState();
+            _movingPlatforms.ClearRuntimeState();
             ResetDebugState();
             ZeroVelocity();
         }
@@ -345,6 +349,11 @@ namespace Portfolio.Locomotion.Spline
                 ResetToSpawn();
                 return;
             }
+
+            _movingPlatforms.ApplyPlatformMotion(
+                _cachedTransform,
+                _state.Grounded,
+                _jump.IsInJumpAscentState);
 
             float deltaTime = Time.fixedDeltaTime;
             Vector2 previousPosition = _cachedTransform.position;
@@ -399,6 +408,8 @@ namespace Portfolio.Locomotion.Spline
             TranslateBy(resolvedDisplacement);
             ApplyResolvedSurface(blockingHit, intendedDisplacement);
             ApplyGroundSnap();
+            _movingPlatforms.Track(_state, _surfaceProbe.SurfaceCollider);
+            _movingPlatforms.FinalizePlatformSync();
             AlignVisual();
             _state.SetVerticalMotion(_velocity.y);
             _state.RefreshPhysicsState(

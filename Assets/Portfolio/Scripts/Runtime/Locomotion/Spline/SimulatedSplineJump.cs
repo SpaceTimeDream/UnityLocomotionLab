@@ -15,12 +15,12 @@ namespace Portfolio.Locomotion.Spline
         #region Components
 
         [Header("JUMP PARAMETERS")]
-        [SerializeField] private float _jumpVelocity = 12f;
-        [SerializeField] private float _maximumJumpVelocity = 16f;
+        [SerializeField] private float _jumpVelocity = 13.3f;
+        [SerializeField] private float _maximumJumpVelocity = 13.3f;
         [SerializeField] private float _jumpBufferTime = 0.12f;
         [SerializeField] private float _coyoteTime = 0.1f;
-        [SerializeField] private float _jumpAnticipationDuration = 0.08f;
-        [SerializeField] private int _groundCheckDelayFixedFrames = 8;
+        [SerializeField] private float _jumpAnticipationDuration = 0.04f;
+        [SerializeField] private int _groundCheckDelayFixedFrames = 5;
         [SerializeField] private bool _enableEarlyRelease = true;
         [SerializeField] private float _earlyReleaseVelocityMultiplier = 0.5f;
 
@@ -221,7 +221,9 @@ namespace Portfolio.Locomotion.Spline
                 velocity.x = 0f;
             }
 
-            float baseVerticalVelocity = Mathf.Max(velocity.y, 0f);
+            float baseVerticalVelocity = state.Grounded
+                ? 0f
+                : Mathf.Max(velocity.y, 0f);
             state.SetSurface(false, false, false, Vector2.up, 0f);
             _groundCheckDelayFramesRemaining = _groundCheckDelayFixedFrames;
             velocity.y = Mathf.Min(baseVerticalVelocity + _jumpVelocity, _maximumJumpVelocity);
@@ -243,6 +245,7 @@ namespace Portfolio.Locomotion.Spline
             _inAnticipationFrame = false;
             _inJumpAscentState = false;
             _anticipationRemainingTime = 0f;
+            _jumpConsumed = false;
         }
 
 #if UNITY_EDITOR

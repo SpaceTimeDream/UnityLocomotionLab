@@ -246,6 +246,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _inAnticipationFrame = false;
             _inJumpAscentState = false;
             _anticipationRemainingTime = 0f;
+            _jumpConsumed = false;
         }
 
 #if UNITY_EDITOR

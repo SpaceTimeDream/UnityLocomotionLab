@@ -187,17 +187,17 @@ MonoBehaviour:
     _groundDeceleration: 90
     _slopeAcceleration: 70
     _slopeDeceleration: 90
-    _airAcceleration: 35
-    _airDeceleration: 25
+    _airAcceleration: 38
+    _airDeceleration: 40
     _minimumInput: 0.01
     _groundedStopSpeed: 0.05
   _jump:
-    _jumpVelocity: 12
-    _maximumJumpVelocity: 16
+    _jumpVelocity: 13.3
+    _maximumJumpVelocity: 13.3
     _jumpBufferTime: 0.12
     _coyoteTime: 0.1
-    _jumpAnticipationDuration: 0.08
-    _groundCheckDelayFixedFrames: 8
+    _jumpAnticipationDuration: 0.04
+    _groundCheckDelayFixedFrames: 5
     _enableEarlyRelease: 1
     _earlyReleaseVelocityMultiplier: 0.5
   _surfaceProbe:
@@ -217,9 +217,9 @@ MonoBehaviour:
     _collisionSkin: 0.02
     _surfaceNormalTolerance: 0.001
     _maximumResolutionIterations: 4
-  _gravity: 28
-  _jumpAscentGravityMultiplier: 1
-  _fallGravityMultiplier: 1.6
+  _gravity: 33.35
+  _jumpAscentGravityMultiplier: 1.1
+  _fallGravityMultiplier: 2.1
   _maximumFallSpeed: 22
   _steepSlopeCheckDistance: 0.35
   _groundedAlignmentSpeed: 18
