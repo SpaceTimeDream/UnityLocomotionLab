@@ -86,6 +86,8 @@ MonoBehaviour:
     _collisionSkin: 0.02
     _surfaceNormalTolerance: 0.001
     _maximumResolutionIterations: 4
+  _movingPlatforms:
+    _enabled: 1
   _gravity: 33.35
   _jumpAscentGravityMultiplier: 1.1
   _fallGravityMultiplier: 2.1
