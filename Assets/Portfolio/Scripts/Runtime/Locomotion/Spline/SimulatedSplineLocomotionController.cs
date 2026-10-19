@@ -97,6 +97,7 @@ namespace Portfolio.Locomotion.Spline
         public float FacingDirection => _facingDirection;
         public float HorizontalDistancePerFixedFrame => _horizontalDistancePerFixedFrame;
         public bool IsMovementFrozen => _movementFrozen;
+        public bool IsScriptedControlActive => _scriptedControlActive;
         public bool MovementBlockedBySteepSlope => _movementBlockedBySteepSlope;
         public Vector2 LastIntendedDisplacement => _lastIntendedDisplacement;
         public Vector2 LastResolvedDisplacement => _lastResolvedDisplacement;
@@ -110,6 +111,8 @@ namespace Portfolio.Locomotion.Spline
 
         private bool _initialized;
         private bool _movementFrozen;
+        private bool _scriptedControlActive;
+        private Vector2 _scriptedMoveInput;
 
         #endregion
 
@@ -250,6 +253,40 @@ namespace Portfolio.Locomotion.Spline
         {
             _movementInput = Mathf.Clamp(movementInput, -1f, 1f);
         }
+        public void BeginScriptedControl()
+        {
+            _scriptedMoveInput = Vector2.zero;
+            _scriptedControlActive = true;
+        }
+
+        public void SetScriptedMoveInput(Vector2 input)
+        {
+            if (!_scriptedControlActive)
+            {
+                return;
+            }
+
+            _scriptedMoveInput = Vector2.ClampMagnitude(input, 1f);
+        }
+
+        public void StopScriptedHorizontalMotion()
+        {
+            _velocity.x = 0f;
+
+            if (_body != null)
+            {
+                Vector2 velocity = _body.linearVelocity;
+                velocity.x = 0f;
+                _body.linearVelocity = velocity;
+            }
+        }
+
+        public void EndScriptedControl()
+        {
+            _scriptedMoveInput = Vector2.zero;
+            SetMovementInput(0f);
+            _scriptedControlActive = false;
+        }
 
         public void RequestJump()
         {
@@ -310,6 +347,8 @@ namespace Portfolio.Locomotion.Spline
         public void ResetLocomotionRuntimeState()
         {
             SetMovementInput(0f);
+            _scriptedMoveInput = Vector2.zero;
+            _scriptedControlActive = false;
             SetFacingDirection(1f);
             _state.ResetRuntimeState();
             _movement.ResetRuntimeState();
@@ -438,7 +477,19 @@ namespace Portfolio.Locomotion.Spline
 
         private void UpdateMoveInput()
         {
-            if (!_state.ControlEnabled || _movementFrozen || _gameInput == null)
+            if (!_state.ControlEnabled || _movementFrozen)
+            {
+                SetMovementInput(0f);
+                return;
+            }
+
+            if (_scriptedControlActive)
+            {
+                SetMovementInput(_scriptedMoveInput.x);
+                return;
+            }
+
+            if (_gameInput == null)
             {
                 SetMovementInput(0f);
                 return;

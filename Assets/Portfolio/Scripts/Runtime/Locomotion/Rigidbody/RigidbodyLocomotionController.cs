@@ -79,6 +79,7 @@ namespace Portfolio.Locomotion.Rigidbody
         public float HorizontalDistancePerFixedFrame => _horizontalDistancePerFixedFrame;
         public float SteepSlopeBlockDirection => _steepSlopeBlockDirection;
         public bool IsMovementFrozen => _movementFrozen;
+        public bool IsScriptedControlActive => _scriptedControlActive;
 
         public event Action<float> DirectionChanged;
         public event Action JumpTriggered;
@@ -89,6 +90,8 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private bool _initialized;
         private bool _movementFrozen;
+        private bool _scriptedControlActive;
+        private Vector2 _scriptedMoveInput;
 
         #endregion
 
@@ -208,9 +211,48 @@ namespace Portfolio.Locomotion.Rigidbody
 
         //------------------------------- Core / Routines Methods -------------------------------//
 
+        public void SetMovementInput(Vector2 movementInput)
+        {
+            SetMovementInput(movementInput.x);
+        }
+
         public void SetMovementInput(float movementInput)
         {
             _movementInput = Mathf.Clamp(movementInput, -1f, 1f);
+        }
+        public void BeginScriptedControl()
+        {
+            _scriptedMoveInput = Vector2.zero;
+            _scriptedControlActive = true;
+        }
+
+        public void SetScriptedMoveInput(Vector2 input)
+        {
+            if (!_scriptedControlActive)
+            {
+                return;
+            }
+
+            _scriptedMoveInput = Vector2.ClampMagnitude(input, 1f);
+        }
+
+        public void StopScriptedHorizontalMotion()
+        {
+            if (_body == null)
+            {
+                return;
+            }
+
+            Vector2 velocity = _body.linearVelocity;
+            velocity.x = 0f;
+            _body.linearVelocity = velocity;
+        }
+
+        public void EndScriptedControl()
+        {
+            _scriptedMoveInput = Vector2.zero;
+            SetMovementInput(0f);
+            _scriptedControlActive = false;
         }
 
         public void RequestJump()
@@ -278,6 +320,8 @@ namespace Portfolio.Locomotion.Rigidbody
         public void ResetLocomotionRuntimeState()
         {
             SetMovementInput(0f);
+            _scriptedMoveInput = Vector2.zero;
+            _scriptedControlActive = false;
             SetFacingDirection(1f);
             _state.ResetRuntimeState();
             _movement.ResetRuntimeState();
@@ -397,7 +441,19 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void UpdateMoveInput()
         {
-            if (!_state.ControlEnabled || _movementFrozen || _gameInput == null)
+            if (!_state.ControlEnabled || _movementFrozen)
+            {
+                SetMovementInput(0f);
+                return;
+            }
+
+            if (_scriptedControlActive)
+            {
+                SetMovementInput(_scriptedMoveInput.x);
+                return;
+            }
+
+            if (_gameInput == null)
             {
                 SetMovementInput(0f);
                 return;
