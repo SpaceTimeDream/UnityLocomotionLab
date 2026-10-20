@@ -75,8 +75,43 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 741f30960d63a984c904285d23069b75, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  movePower: 10
-  jumpPower: 15
+  _animator: {fileID: 0}
+  _head:
+    _bonePath: Skeletal/bone_1/bone_2/bone_3/bone_4
+    _bone: {fileID: 0}
+    _minimumAimAngle: -75
+    _maximumAimAngle: 75
+    _forwardAngleOffset: 0
+    _rotationSpeed: 540
+  _frontUpperArm:
+    _bonePath: Skeletal/bone_1/bone_2/bone_3/bone_5
+    _bone: {fileID: 0}
+    _minimumAimAngle: -130
+    _maximumAimAngle: 130
+    _forwardAngleOffset: 0
+    _rotationSpeed: 720
+  _frontForearm:
+    _bonePath: Skeletal/bone_1/bone_2/bone_3/bone_5/bone_6
+    _bone: {fileID: 0}
+    _minimumAimAngle: -145
+    _maximumAimAngle: 145
+    _forwardAngleOffset: 0
+    _rotationSpeed: 720
+  _backUpperArm:
+    _bonePath: Skeletal/bone_1/bone_2/bone_3/bone_7
+    _bone: {fileID: 0}
+    _minimumAimAngle: -130
+    _maximumAimAngle: 130
+    _forwardAngleOffset: 0
+    _rotationSpeed: 720
+  _backForearm:
+    _bonePath: Skeletal/bone_1/bone_2/bone_3/bone_7/bone_8
+    _bone: {fileID: 0}
+    _minimumAimAngle: -145
+    _maximumAimAngle: 145
+    _forwardAngleOffset: 0
+    _rotationSpeed: 720
+  _drawAimGizmos: 1
 --- !u!114 &794697844
 MonoBehaviour:
   m_ObjectHideFlags: 0
