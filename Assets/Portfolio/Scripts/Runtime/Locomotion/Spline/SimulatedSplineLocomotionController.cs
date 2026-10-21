@@ -610,7 +610,10 @@ namespace Portfolio.Locomotion.Spline
             }
 
             Bounds bounds = _capsuleCollider.bounds;
-            float verticalCorrection = groundHit.point.y - bounds.min.y;
+            float surfaceSlope = -groundHit.normal.x / Mathf.Max(groundHit.normal.y, 0.01f);
+            float groundYAtCenter = groundHit.point.y +
+                surfaceSlope * (bounds.center.x - groundHit.point.x);
+            float verticalCorrection = groundYAtCenter - bounds.min.y;
             float maximumCorrection = verticalRange - _collisionResolver.CollisionSkin;
 
             if (Mathf.Abs(verticalCorrection) > maximumCorrection)
