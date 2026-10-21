@@ -110,7 +110,7 @@ namespace Portfolio.Character
             }
 
             UpdateAutomaticHeadLook();
-            UpdateAim(_head);
+            UpdateHeadAim();
             UpdateAim(_frontUpperArm);
             UpdateAim(_frontForearm);
             UpdateAim(_backUpperArm);
@@ -214,6 +214,9 @@ namespace Portfolio.Character
 
             settings._baseLocalRotation = settings._bone.localRotation;
             settings._currentLocalRotation = settings._baseLocalRotation;
+            settings._currentAimOffset = 0f;
+            settings._lastAppliedAimOffset = 0f;
+            settings._hasLastAppliedAimPose = false;
             settings._hasBaseRotation = true;
             settings._isOverriding = false;
         }
@@ -822,6 +825,105 @@ namespace Portfolio.Character
             settings._hasManualAngle = false;
         }
 
+        private void UpdateHeadAim()
+        {
+            AimBoneSettings settings = _head;
+
+            if (settings == null || settings._bone == null)
+            {
+                return;
+            }
+
+            Quaternion animatedRotation = settings._bone.localRotation;
+
+            if (settings._hasLastAppliedAimPose &&
+                Quaternion.Angle(animatedRotation, settings._lastAppliedLocalRotation) <= 0.05f)
+            {
+                animatedRotation *= Quaternion.Euler(0f, 0f, -settings._lastAppliedAimOffset);
+            }
+
+            float animatedAngle = animatedRotation.eulerAngles.z;
+            bool hasAim = TryGetDesiredHeadAimOffset(settings, animatedAngle, out float desiredAimOffset);
+
+            if (hasAim)
+            {
+                settings._currentAimOffset = Mathf.MoveTowardsAngle(
+                    settings._currentAimOffset,
+                    desiredAimOffset,
+                    settings._rotationSpeed * Time.deltaTime);
+                settings._isOverriding = true;
+            }
+            else if (settings._isOverriding)
+            {
+                settings._currentAimOffset = Mathf.MoveTowardsAngle(
+                    settings._currentAimOffset,
+                    0f,
+                    settings._rotationSpeed * Time.deltaTime);
+
+                if (Mathf.Abs(Mathf.DeltaAngle(settings._currentAimOffset, 0f)) <= 0.1f)
+                {
+                    settings._currentAimOffset = 0f;
+                    settings._isOverriding = false;
+                }
+            }
+            else
+            {
+                settings._hasLastAppliedAimPose = false;
+                return;
+            }
+
+            Quaternion aimedRotation = animatedRotation *
+                Quaternion.Euler(0f, 0f, settings._currentAimOffset);
+
+            settings._bone.localRotation = aimedRotation;
+            settings._lastAppliedLocalRotation = aimedRotation;
+            settings._lastAppliedAimOffset = settings._currentAimOffset;
+            settings._hasLastAppliedAimPose = true;
+        }
+
+        private bool TryGetDesiredHeadAimOffset(
+            AimBoneSettings settings,
+            float animatedAngle,
+            out float aimOffset)
+        {
+            aimOffset = 0f;
+
+            if (settings._hasManualAngle)
+            {
+                aimOffset = Mathf.Clamp(
+                    settings._manualAngleFromBase,
+                    settings._minimumAimAngle,
+                    settings._maximumAimAngle);
+                return true;
+            }
+
+            if (!TryGetTargetPosition(settings, out Vector3 worldTargetPosition))
+            {
+                return false;
+            }
+
+            Transform parent = settings._bone.parent;
+            Vector3 targetInParentSpace = parent != null
+                ? parent.InverseTransformPoint(worldTargetPosition)
+                : worldTargetPosition;
+            Vector2 localDirection = targetInParentSpace - settings._bone.localPosition;
+
+            if (localDirection.sqrMagnitude <= 0.0001f)
+            {
+                return false;
+            }
+
+            float targetAngle = Mathf.Atan2(localDirection.y, localDirection.x) * Mathf.Rad2Deg;
+            targetAngle -= settings._forwardAngleOffset;
+
+            aimOffset = Mathf.Clamp(
+                Mathf.DeltaAngle(animatedAngle, targetAngle),
+                settings._minimumAimAngle,
+                settings._maximumAimAngle);
+
+            return true;
+        }
+
         private void UpdateAim(AimBoneSettings settings)
         {
             if (settings == null || settings._bone == null)
@@ -956,6 +1058,9 @@ namespace Portfolio.Character
 
             settings._bone.localRotation = settings._baseLocalRotation;
             settings._currentLocalRotation = settings._baseLocalRotation;
+            settings._currentAimOffset = 0f;
+            settings._lastAppliedAimOffset = 0f;
+            settings._hasLastAppliedAimPose = false;
             settings._isOverriding = false;
         }
 
@@ -1081,6 +1186,10 @@ namespace Portfolio.Character
 
             internal Quaternion _baseLocalRotation;
             internal Quaternion _currentLocalRotation;
+            internal Quaternion _lastAppliedLocalRotation;
+            internal float _currentAimOffset;
+            internal float _lastAppliedAimOffset;
+            internal bool _hasLastAppliedAimPose;
             internal Transform _target;
             internal Vector3 _targetPosition;
             internal float _manualAngleFromBase;
