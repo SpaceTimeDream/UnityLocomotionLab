@@ -35,6 +35,7 @@ namespace Portfolio.Locomotion.Spline
         private float _groundingGraceRemainingTime;
 
         public float GroundSnapDistance => _groundSnapDistance;
+        public float ProbeDistance => _probeDistance;
         public float MaximumWalkableSlopeAngle => _maximumWalkableSlopeAngle;
         public Collider2D SurfaceCollider => _surfaceCollider;
         public Vector2 SurfaceNormal => _surfaceNormal;
@@ -143,6 +144,58 @@ namespace Portfolio.Locomotion.Spline
                 {
                     bestHit = hit;
                     hasHit = true;
+                }
+            }
+
+            return hasHit;
+        }
+
+        public bool TryGetGroundHitNearPosition(
+            CapsuleCollider2D capsuleCollider,
+            float verticalRange,
+            out RaycastHit2D bestHit)
+        {
+            EnsureInitialized();
+            bestHit = default;
+
+            if (capsuleCollider == null || verticalRange <= 0f)
+            {
+                return false;
+            }
+
+            Bounds bounds = capsuleCollider.bounds;
+            float originY = bounds.min.y + verticalRange;
+            float castDistance = verticalRange * 2f;
+            bool hasHit = false;
+
+            for (int i = 0; i < 3; i++)
+            {
+                float sampleOffset = i == 0
+                    ? 0f
+                    : (i == 1 ? -bounds.extents.x : bounds.extents.x) * 0.75f;
+                Vector2 origin = new Vector2(bounds.center.x + sampleOffset, originY);
+                int hitCount = Physics2D.Raycast(
+                    origin,
+                    Vector2.down,
+                    _contactFilter,
+                    _hits,
+                    castDistance);
+
+                for (int j = 0; j < hitCount; j++)
+                {
+                    RaycastHit2D hit = _hits[j];
+
+                    if (!IsValidCollider(hit.collider, capsuleCollider) ||
+                        !IsWalkableSurface(hit.normal))
+                    {
+                        continue;
+                    }
+
+                    if (!hasHit || hit.distance < bestHit.distance)
+                    {
+                        bestHit = hit;
+                        hasHit = true;
+                    }
                 }
             }
 
