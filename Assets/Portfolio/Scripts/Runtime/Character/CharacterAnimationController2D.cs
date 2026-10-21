@@ -287,7 +287,7 @@ namespace Portfolio.Character
 
         #endregion
 
-        #region Wizard Animation Methods
+        #region Character Animation Methods
 
         public void SetRunning(bool running)
         {
@@ -651,7 +651,9 @@ namespace Portfolio.Character
 
         private void ClearAutomaticInterestTarget()
         {
-            if (_currentInterestTarget == null)
+            bool hasAutomaticAim = _head != null && _head._usesPosition;
+
+            if (_currentInterestTarget == null && !hasAutomaticAim)
             {
                 return;
             }
@@ -966,13 +968,13 @@ namespace Portfolio.Character
         private class AimBoneSettings
         {
             [Header("BONE")]
-            [SerializeField] private string _bonePath;
-            [SerializeField] private Transform _bone;
+            [SerializeField] internal string _bonePath;
+            [SerializeField] internal Transform _bone;
 
             [Header("AIM LIMITS")]
             [SerializeField] private float _minimumAimAngle = -75f;
             [SerializeField] private float _maximumAimAngle = 75f;
-            [SerializeField] private float _forwardAngleOffset;
+            [SerializeField] internal float _forwardAngleOffset;
             [SerializeField] private float _rotationSpeed = 540f;
 
             internal Quaternion _baseLocalRotation;
