@@ -57,8 +57,8 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private float _groundAdhesionForce = 20f;
         [SerializeField] private bool _exportGroundAdhesionLog;
         [SerializeField] private float _groundAdhesionLogInterval = 0.05f;
-        [SerializeField, HideInInspector] private string _groundAdhesionLogPath;
-        [SerializeField, HideInInspector] private string _groundAdhesionLogError;
+        [SerializeField] private string _groundAdhesionLogPath;
+        [SerializeField] private string _groundAdhesionLogError;
 
         [Header("FACING PARAMETERS")]
         [SerializeField] private bool _flipVisualWithFacing = true;
