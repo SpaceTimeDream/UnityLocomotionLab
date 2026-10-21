@@ -76,6 +76,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _animator: {fileID: 0}
+  _facingRoot: {fileID: 0}
   _head:
     _bonePath: Skeletal/bone_1/bone_2/bone_3/bone_4
     _bone: {fileID: 0}
@@ -111,6 +112,9 @@ MonoBehaviour:
     _maximumAimAngle: 145
     _forwardAngleOffset: 0
     _rotationSpeed: 720
+  _automaticHeadLook: 1
+  _lookAtRadius: 5
+  _maximumInterestAngle: 85
   _drawAimGizmos: 1
 --- !u!114 &794697844
 MonoBehaviour:

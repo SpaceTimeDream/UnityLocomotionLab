@@ -2,16 +2,16 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ClearSky
+namespace Portfolio.Character
 {
-    public enum WizardArm
+    public enum CharacterArm2D
     {
         Front,
         Back
     }
 
     [DisallowMultipleComponent]
-    public class SimplePlayerAnimationController : MonoBehaviour
+    public class CharacterAnimationController2D : MonoBehaviour
     {
         //------------------------------- Game Pause -------------------------------//
         // This component only drives animation and bone poses. Gameplay systems own input and movement.
@@ -22,6 +22,8 @@ namespace ClearSky
 
         [Header("COMPONENTS")]
         [SerializeField] private Animator _animator;
+        [Tooltip("Transform whose horizontal scale reflects the character facing direction.")]
+        [SerializeField] private Transform _facingRoot;
 
         [Header("HEAD AIM")]
         [SerializeField] private AimBoneSettings _head = new AimBoneSettings(
@@ -39,10 +41,17 @@ namespace ClearSky
         [SerializeField] private AimBoneSettings _backForearm = new AimBoneSettings(
             "Skeletal/bone_1/bone_2/bone_3/bone_7/bone_8", -145f, 145f, 720f);
 
+        [Header("AUTOMATIC HEAD LOOK")]
+        [SerializeField] private bool _automaticHeadLook = true;
+        [SerializeField] private float _lookAtRadius = 5f;
+        [SerializeField, Range(0f, 90f)] private float _maximumInterestAngle = 85f;
+
         [Header("DEBUG PARAMETERS")]
         [SerializeField] private bool _drawAimGizmos = true;
 
         public Animator Animator => _animator;
+        public CharacterLookTarget2D CurrentInterestTarget => _currentInterestTarget;
+        public bool AutomaticHeadLookEnabled => _automaticHeadLook;
         public Transform HeadBone => _head != null ? _head._bone : null;
         public Transform FrontUpperArmBone => _frontUpperArm != null ? _frontUpperArm._bone : null;
         public Transform FrontForearmBone => _frontForearm != null ? _frontForearm._bone : null;
@@ -54,6 +63,10 @@ namespace ClearSky
         #region Flags
 
         private bool _initialized;
+        private CharacterLookTarget2D _currentInterestTarget;
+        private bool _manualHeadControl;
+        private bool _hasFacingDirectionOverride;
+        private float _facingDirectionOverride = 1f;
         private RuntimeAnimatorController _cachedAnimatorController;
         private readonly Dictionary<int, AnimatorControllerParameterType> _animatorParameters =
             new Dictionary<int, AnimatorControllerParameterType>();
@@ -76,6 +89,7 @@ namespace ClearSky
                 return;
             }
 
+            UpdateAutomaticHeadLook();
             UpdateAim(_head);
             UpdateAim(_frontUpperArm);
             UpdateAim(_frontForearm);
@@ -121,6 +135,11 @@ namespace ClearSky
             if (_animator == null)
             {
                 _animator = GetComponentInChildren<Animator>(true);
+            }
+
+            if (_facingRoot == null)
+            {
+                _facingRoot = transform;
             }
 
             ResolveBone(_head);
@@ -344,26 +363,62 @@ namespace ClearSky
 
         #region Head Control
 
+        public void SetAutomaticHeadLookEnabled(bool enabled)
+        {
+            EnsureInitialized();
+            _automaticHeadLook = enabled;
+
+            if (!enabled && !_manualHeadControl)
+            {
+                _currentInterestTarget = null;
+                ClearAimControl(_head);
+            }
+        }
+
+        public void SetFacingDirection(float direction)
+        {
+            if (Mathf.Abs(direction) <= 0.001f)
+            {
+                return;
+            }
+
+            _facingDirectionOverride = Mathf.Sign(direction);
+            _hasFacingDirectionOverride = true;
+        }
+
+        public void ClearFacingDirectionOverride()
+        {
+            _hasFacingDirectionOverride = false;
+        }
+
         public void SetHeadLookTarget(Transform target)
         {
             EnsureInitialized();
+            _manualHeadControl = target != null;
+            _currentInterestTarget = null;
             SetTarget(_head, target);
         }
 
         public void SetHeadLookPosition(Vector3 worldPosition)
         {
             EnsureInitialized();
+            _manualHeadControl = true;
+            _currentInterestTarget = null;
             SetTargetPosition(_head, worldPosition);
         }
 
         public void SetHeadLocalAngle(float angleFromBase)
         {
             EnsureInitialized();
+            _manualHeadControl = true;
+            _currentInterestTarget = null;
             SetManualAngle(_head, angleFromBase);
         }
 
         public void ClearHeadLookTarget()
         {
+            _manualHeadControl = false;
+            _currentInterestTarget = null;
             ClearAimControl(_head);
         }
 
@@ -372,28 +427,28 @@ namespace ClearSky
         #region Arm Control
 
         // These methods rotate the arm segments independently; they are not a two-bone IK solver.
-        public void SetArmTarget(WizardArm arm, Transform target)
+        public void SetArmTarget(CharacterArm2D arm, Transform target)
         {
             EnsureInitialized();
             SetTarget(GetUpperArm(arm), target);
             SetTarget(GetForearm(arm), target);
         }
 
-        public void SetArmTargetPosition(WizardArm arm, Vector3 worldPosition)
+        public void SetArmTargetPosition(CharacterArm2D arm, Vector3 worldPosition)
         {
             EnsureInitialized();
             SetTargetPosition(GetUpperArm(arm), worldPosition);
             SetTargetPosition(GetForearm(arm), worldPosition);
         }
 
-        public void SetArmPose(WizardArm arm, float upperArmAngleFromBase, float forearmAngleFromBase)
+        public void SetArmPose(CharacterArm2D arm, float upperArmAngleFromBase, float forearmAngleFromBase)
         {
             EnsureInitialized();
             SetManualAngle(GetUpperArm(arm), upperArmAngleFromBase);
             SetManualAngle(GetForearm(arm), forearmAngleFromBase);
         }
 
-        public void ClearArmControl(WizardArm arm)
+        public void ClearArmControl(CharacterArm2D arm)
         {
             ClearAimControl(GetUpperArm(arm));
             ClearAimControl(GetForearm(arm));
@@ -401,8 +456,8 @@ namespace ClearSky
 
         public void ClearArmControls()
         {
-            ClearArmControl(WizardArm.Front);
-            ClearArmControl(WizardArm.Back);
+            ClearArmControl(CharacterArm2D.Front);
+            ClearArmControl(CharacterArm2D.Back);
         }
 
         #endregion
@@ -435,14 +490,14 @@ namespace ClearSky
             }
         }
 
-        private AimBoneSettings GetUpperArm(WizardArm arm)
+        private AimBoneSettings GetUpperArm(CharacterArm2D arm)
         {
             switch (arm)
             {
-                case WizardArm.Front:
+                case CharacterArm2D.Front:
                     return _frontUpperArm;
 
-                case WizardArm.Back:
+                case CharacterArm2D.Back:
                     return _backUpperArm;
 
                 default:
@@ -450,19 +505,159 @@ namespace ClearSky
             }
         }
 
-        private AimBoneSettings GetForearm(WizardArm arm)
+        private AimBoneSettings GetForearm(CharacterArm2D arm)
         {
             switch (arm)
             {
-                case WizardArm.Front:
+                case CharacterArm2D.Front:
                     return _frontForearm;
 
-                case WizardArm.Back:
+                case CharacterArm2D.Back:
                     return _backForearm;
 
                 default:
                     return null;
             }
+        }
+
+        #endregion
+
+        #region Automatic Head Look
+
+        private void UpdateAutomaticHeadLook()
+        {
+            if (_manualHeadControl)
+            {
+                bool manualTargetIsValid = _head._hasManualAngle ||
+                    _head._usesPosition ||
+                    _head._target != null;
+
+                if (manualTargetIsValid)
+                {
+                    return;
+                }
+
+                _manualHeadControl = false;
+            }
+
+            if (!_automaticHeadLook)
+            {
+                ClearAutomaticInterestTarget();
+                return;
+            }
+
+            CharacterLookTarget2D nextTarget = FindBestInterestTarget();
+
+            if (nextTarget == null)
+            {
+                ClearAutomaticInterestTarget();
+                return;
+            }
+
+            _currentInterestTarget = nextTarget;
+            SetTargetPosition(_head, nextTarget.GetLookPosition(this));
+        }
+
+        private CharacterLookTarget2D FindBestInterestTarget()
+        {
+            if (_head == null || _head._bone == null)
+            {
+                return null;
+            }
+
+            Vector2 origin = _head._bone.position;
+            Vector2 forward = Vector2.right * GetFacingDirection();
+            float maximumDistanceSqr = _lookAtRadius * _lookAtRadius;
+            float bestDistanceSqr = float.PositiveInfinity;
+            int bestPriority = int.MinValue;
+            CharacterLookTarget2D bestTarget = null;
+
+            foreach (CharacterLookTarget2D target in CharacterLookTarget2D.ActiveTargets)
+            {
+                if (target == null || !target.IsAvailableTo(this))
+                {
+                    continue;
+                }
+
+                Vector2 directionToTarget = (Vector2)target.GetLookPosition(this) - origin;
+                float distanceSqr = directionToTarget.sqrMagnitude;
+
+                if (distanceSqr <= 0.0001f || distanceSqr > maximumDistanceSqr)
+                {
+                    continue;
+                }
+
+                if (Vector2.Angle(forward, directionToTarget) > _maximumInterestAngle)
+                {
+                    continue;
+                }
+
+                if (target.Priority < bestPriority ||
+                    (target.Priority == bestPriority && distanceSqr >= bestDistanceSqr))
+                {
+                    continue;
+                }
+
+                bestTarget = target;
+                bestPriority = target.Priority;
+                bestDistanceSqr = distanceSqr;
+            }
+
+            if (_currentInterestTarget != null &&
+                _currentInterestTarget.IsAvailableTo(this) &&
+                IsInsideInterestRange(_currentInterestTarget, origin, forward, maximumDistanceSqr, out float currentDistanceSqr))
+            {
+                if (_currentInterestTarget.Priority > bestPriority ||
+                    (_currentInterestTarget.Priority == bestPriority &&
+                     currentDistanceSqr <= bestDistanceSqr + 0.25f))
+                {
+                    return _currentInterestTarget;
+                }
+            }
+
+            return bestTarget;
+        }
+
+        private bool IsInsideInterestRange(
+            CharacterLookTarget2D target,
+            Vector2 origin,
+            Vector2 forward,
+            float maximumDistanceSqr,
+            out float distanceSqr)
+        {
+            Vector2 directionToTarget = (Vector2)target.GetLookPosition(this) - origin;
+            distanceSqr = directionToTarget.sqrMagnitude;
+
+            if (distanceSqr <= 0.0001f ||
+                distanceSqr > maximumDistanceSqr ||
+                Vector2.Angle(forward, directionToTarget) > _maximumInterestAngle)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private float GetFacingDirection()
+        {
+            if (_hasFacingDirectionOverride)
+            {
+                return _facingDirectionOverride;
+            }
+
+            Transform facingRoot = _facingRoot != null ? _facingRoot : transform;
+            return facingRoot.lossyScale.x < 0f ? -1f : 1f;
+        }
+
+        private void ClearAutomaticInterestTarget()
+        {
+            if (_currentInterestTarget == null)
+            {
+                return;
+            }
+
+            _currentInterestTarget = null;
+            ClearAimControl(_head);
         }
 
         #endregion
@@ -674,6 +869,8 @@ namespace ClearSky
             ValidateAim(_frontForearm);
             ValidateAim(_backUpperArm);
             ValidateAim(_backForearm);
+            _lookAtRadius = Mathf.Max(0f, _lookAtRadius);
+            _maximumInterestAngle = Mathf.Clamp(_maximumInterestAngle, 0f, 90f);
 
             if (!Application.isPlaying)
             {
@@ -698,6 +895,31 @@ namespace ClearSky
             DrawAimGizmo(_frontForearm);
             DrawAimGizmo(_backUpperArm);
             DrawAimGizmo(_backForearm);
+
+            if (_automaticHeadLook)
+            {
+                DrawInterestRangeGizmos();
+            }
+        }
+
+        private void DrawInterestRangeGizmos()
+        {
+            Vector3 origin = _head != null && _head._bone != null
+                ? _head._bone.position
+                : transform.position;
+            float direction = GetFacingDirection();
+            Vector3 forward = Vector3.right * direction;
+
+            Color previousColor = Gizmos.color;
+            Gizmos.color = new Color(1f, 0.8f, 0.1f, 1f);
+            Gizmos.DrawWireSphere(origin, _lookAtRadius);
+            Gizmos.DrawLine(
+                origin,
+                origin + Quaternion.Euler(0f, 0f, _maximumInterestAngle) * forward * _lookAtRadius);
+            Gizmos.DrawLine(
+                origin,
+                origin + Quaternion.Euler(0f, 0f, -_maximumInterestAngle) * forward * _lookAtRadius);
+            Gizmos.color = previousColor;
         }
 
         private void DrawAimGizmo(AimBoneSettings settings)
@@ -753,16 +975,16 @@ namespace ClearSky
             [SerializeField] private float _forwardAngleOffset;
             [SerializeField] private float _rotationSpeed = 540f;
 
-            private Quaternion _baseLocalRotation;
-            private Quaternion _currentLocalRotation;
-            private Transform _target;
-            private Vector3 _targetPosition;
-            private float _manualAngleFromBase;
-            private bool _hasBaseRotation;
-            private bool _hasTarget;
-            private bool _usesPosition;
-            private bool _hasManualAngle;
-            private bool _isOverriding;
+            internal Quaternion _baseLocalRotation;
+            internal Quaternion _currentLocalRotation;
+            internal Transform _target;
+            internal Vector3 _targetPosition;
+            internal float _manualAngleFromBase;
+            internal bool _hasBaseRotation;
+            internal bool _hasTarget;
+            internal bool _usesPosition;
+            internal bool _hasManualAngle;
+            internal bool _isOverriding;
 
             public AimBoneSettings()
             {
