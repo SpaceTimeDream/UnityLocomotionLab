@@ -52,6 +52,9 @@ namespace Portfolio.Locomotion.Rigidbody
         [Header("SLOPE PARAMETERS")]
         [SerializeField] private float _steepSlopeJumpCheckDistance = 0.35f;
 
+        [Header("GROUND ADHESION PARAMETERS")]
+        [SerializeField] private float _groundAdhesionForce = 20f;
+
         [Header("FACING PARAMETERS")]
         [SerializeField] private bool _flipVisualWithFacing = true;
 
@@ -406,6 +409,7 @@ namespace Portfolio.Locomotion.Rigidbody
             }
 
             ApplyGravity();
+            ApplyGroundAdhesion();
 
             bool hadExternalForce = _externalForces.HasExternalForce;
             _externalForces.UpdateRuntimeState(_body, _state);
@@ -568,6 +572,29 @@ namespace Portfolio.Locomotion.Rigidbody
             _body.linearVelocity = velocity;
         }
 
+        private void ApplyGroundAdhesion()
+        {
+            if (_groundAdhesionForce <= 0f ||
+                !_state.Grounded ||
+                !_surfaceProbe.HasDirectSurface ||
+                _jump.IsInJumpAscentState ||
+                _externalForces.HasExternalForce)
+            {
+                return;
+            }
+
+            Vector2 surfaceNormal = _surfaceProbe.SurfaceNormal.normalized;
+
+            if (surfaceNormal.y <= 0f ||
+                Vector2.Angle(surfaceNormal, Vector2.up) > _surfaceProbe.MaximumWalkableSlopeAngle ||
+                Vector2.Dot(_body.linearVelocity, surfaceNormal) > 0.1f)
+            {
+                return;
+            }
+
+            _body.AddForce(-surfaceNormal * _groundAdhesionForce, ForceMode2D.Force);
+        }
+
         private void HandleJumpPressed()
         {
             if (_state.ControlEnabled && !_movementFrozen)
@@ -591,6 +618,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _fallGravityMultiplier = Mathf.Max(0f, _fallGravityMultiplier);
             _maximumFallSpeed = Mathf.Max(0f, _maximumFallSpeed);
             _steepSlopeJumpCheckDistance = Mathf.Max(0.01f, _steepSlopeJumpCheckDistance);
+            _groundAdhesionForce = Mathf.Max(0f, _groundAdhesionForce);
             _movement?.Validate();
             _jump?.Validate();
             _surfaceProbe?.Validate();
