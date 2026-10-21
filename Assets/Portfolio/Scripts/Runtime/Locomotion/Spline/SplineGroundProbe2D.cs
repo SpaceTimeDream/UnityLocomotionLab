@@ -166,8 +166,6 @@ namespace Portfolio.Locomotion.Spline
             Bounds bounds = capsuleCollider.bounds;
             float originY = bounds.min.y + verticalRange;
             float castDistance = verticalRange * 2f;
-            bool hasHit = false;
-
             for (int i = 0; i < 3; i++)
             {
                 float sampleOffset = i == 0
@@ -180,6 +178,7 @@ namespace Portfolio.Locomotion.Spline
                     _contactFilter,
                     _hits,
                     castDistance);
+                RaycastHit2D closestHit = default;
 
                 for (int j = 0; j < hitCount; j++)
                 {
@@ -191,15 +190,22 @@ namespace Portfolio.Locomotion.Spline
                         continue;
                     }
 
-                    if (!hasHit || hit.distance < bestHit.distance)
+                    if (closestHit.collider == null || hit.distance < closestHit.distance)
                     {
-                        bestHit = hit;
-                        hasHit = true;
+                        closestHit = hit;
                     }
                 }
+
+                if (closestHit.collider == null)
+                {
+                    continue;
+                }
+
+                bestHit = closestHit;
+                return true;
             }
 
-            return hasHit;
+            return false;
         }
 
         public void ApplySurfaceHit(RaycastHit2D hit, LocomotionState state)
