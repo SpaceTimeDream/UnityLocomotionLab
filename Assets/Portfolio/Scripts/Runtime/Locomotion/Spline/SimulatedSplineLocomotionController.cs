@@ -397,6 +397,7 @@ namespace Portfolio.Locomotion.Spline
 
             float deltaTime = Time.fixedDeltaTime;
             Vector2 previousPosition = _cachedTransform.position;
+            bool wasGrounded = _state.Grounded;
             _body.linearVelocity = Vector2.zero;
             _body.angularVelocity = 0f;
             _surfaceProbe.Probe(
@@ -447,7 +448,7 @@ namespace Portfolio.Locomotion.Spline
             _lastBlockingHit = blockingHit;
             TranslateBy(resolvedDisplacement);
             ApplyResolvedSurface(blockingHit, intendedDisplacement);
-            ApplyGroundSnap();
+            ApplyGroundSnap(wasGrounded);
             _movingPlatforms.Track(_state, _surfaceProbe.SurfaceCollider);
             _movingPlatforms.FinalizePlatformSync();
             AlignVisual();
@@ -585,40 +586,53 @@ namespace Portfolio.Locomotion.Spline
             _surfaceProbe.ApplySurfaceHit(blockingHit, _state);
         }
 
-        private void ApplyGroundSnap()
+        private void ApplyGroundSnap(bool wasGrounded)
         {
             _lastGroundSnapDisplacement = Vector2.zero;
             _lastGroundSnapHit = default;
 
-            if (!_state.Grounded || _jump.IsInJumpAscentState)
+            if ((!wasGrounded && !_state.Grounded) || _jump.IsInJumpAscentState)
             {
                 return;
             }
 
-            float castDistance =
+            float verticalRange =
                 _surfaceProbe.GroundSnapDistance +
+                _surfaceProbe.ProbeDistance +
                 _collisionResolver.CollisionSkin;
 
-            if (!_surfaceProbe.TryGetGroundHit(
+            if (!_surfaceProbe.TryGetGroundHitNearPosition(
                 _capsuleCollider,
-                castDistance,
-                out RaycastHit2D groundHit) ||
-                !_surfaceProbe.IsWalkableSurface(groundHit.normal))
+                verticalRange,
+                out RaycastHit2D groundHit))
+            {
+                return;
+            }
+
+            Bounds bounds = _capsuleCollider.bounds;
+            float verticalCorrection = groundHit.point.y - bounds.min.y;
+            float maximumCorrection = verticalRange - _collisionResolver.CollisionSkin;
+
+            if (Mathf.Abs(verticalCorrection) > maximumCorrection)
             {
                 return;
             }
 
             _lastGroundSnapHit = groundHit;
-            float snapDistance = Mathf.Max(
-                0f,
-                groundHit.distance - _collisionResolver.CollisionSkin);
 
-            if (snapDistance > 0f)
+            if (Mathf.Abs(verticalCorrection) > 0.0001f)
             {
-                _lastGroundSnapDisplacement = Vector2.down * snapDistance;
+                _lastGroundSnapDisplacement = Vector2.up * verticalCorrection;
                 TranslateBy(_lastGroundSnapDisplacement);
             }
 
+            Vector2 tangent = _surfaceProbe.GetSlopeTangent(groundHit.normal);
+            if (Vector2.Dot(tangent, _velocity) < 0f)
+            {
+                tangent *= -1f;
+            }
+
+            _velocity = tangent * Vector2.Dot(_velocity, tangent);
             _surfaceProbe.ApplySurfaceHit(groundHit, _state);
         }
 
