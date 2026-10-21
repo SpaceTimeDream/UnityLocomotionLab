@@ -19,6 +19,7 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private float _probeDistance = 0.08f;
         [SerializeField] private float _probeInset = 0.04f;
         [SerializeField] private float _risingGroundedVelocityThreshold = 0.1f;
+        [SerializeField] private float _groundingGraceDuration = 0.06f;
 
         [Header("SLOPE CHECK PARAMETERS")]
         [SerializeField] private float _slopeAngleThreshold = 1f;
@@ -32,6 +33,7 @@ namespace Portfolio.Locomotion.Rigidbody
         private Collider2D _surfaceCollider;
         private Vector2 _surfaceNormal = Vector2.up;
         private float _groundedTime;
+        private float _groundingGraceRemainingTime;
 
         public float MaximumWalkableSlopeAngle => _maximumWalkableSlopeAngle;
         public Collider2D SurfaceCollider => _surfaceCollider;
@@ -134,7 +136,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
             if (!hasHit)
             {
-                ClearSurface(state);
+                HandleMissingSurface(body.linearVelocity, state);
                 return;
             }
 
@@ -208,6 +210,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _probeDistance = Mathf.Max(0.01f, _probeDistance);
             _probeInset = Mathf.Max(0f, _probeInset);
             _risingGroundedVelocityThreshold = Mathf.Max(0f, _risingGroundedVelocityThreshold);
+            _groundingGraceDuration = Mathf.Max(0f, _groundingGraceDuration);
             _slopeAngleThreshold = Mathf.Clamp(_slopeAngleThreshold, 0f, 89f);
             _maximumWalkableSlopeAngle = Mathf.Clamp(_maximumWalkableSlopeAngle, _slopeAngleThreshold, 89f);
             _steepSlopeJumpRestrictionAngle = Mathf.Clamp(
@@ -221,7 +224,42 @@ namespace Portfolio.Locomotion.Rigidbody
             _surfaceCollider = null;
             _surfaceNormal = Vector2.up;
             _groundedTime = 0f;
+            _groundingGraceRemainingTime = 0f;
             state.SetSurface(false, false, false, Vector2.up, 0f);
+        }
+
+        private void HandleMissingSurface(Vector2 velocity, LocomotionState state)
+        {
+            if (_surfaceCollider == null ||
+                _groundingGraceRemainingTime <= 0f ||
+                IsSeparatingFromSurface(velocity, _surfaceNormal))
+            {
+                ClearSurface(state);
+                return;
+            }
+
+            _groundingGraceRemainingTime = Mathf.Max(
+                0f,
+                _groundingGraceRemainingTime - Time.fixedDeltaTime);
+
+            if (_groundingGraceRemainingTime <= 0f)
+            {
+                ClearSurface(state);
+                return;
+            }
+
+            float slopeAngle = Vector2.Angle(_surfaceNormal, Vector2.up);
+            bool walkable = _surfaceNormal.y > 0f &&
+                slopeAngle <= _maximumWalkableSlopeAngle;
+            bool onWalkableSlope = walkable && slopeAngle > _slopeAngleThreshold;
+            bool onSteepSlope = _surfaceNormal.y > 0f && !walkable;
+
+            state.SetSurface(
+                true,
+                onWalkableSlope,
+                onSteepSlope,
+                _surfaceNormal,
+                slopeAngle);
         }
 
         private bool TryGetBodyContact(
@@ -279,6 +317,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _surfaceCollider = surfaceCollider;
             _surfaceNormal = surfaceNormal.normalized;
             _groundedTime += Time.fixedDeltaTime;
+            _groundingGraceRemainingTime = _groundingGraceDuration;
             state.SetSurface(
                 true,
                 onWalkableSlope,
