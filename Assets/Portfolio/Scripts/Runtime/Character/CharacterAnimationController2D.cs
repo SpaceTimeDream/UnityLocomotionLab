@@ -609,7 +609,7 @@ namespace Portfolio.Character
             {
                 if (_currentInterestTarget.Priority > bestPriority ||
                     (_currentInterestTarget.Priority == bestPriority &&
-                     currentDistanceSqr <= bestDistanceSqr + 0.25f))
+                     Mathf.Sqrt(currentDistanceSqr) <= Mathf.Sqrt(bestDistanceSqr) + 0.25f))
                 {
                     return _currentInterestTarget;
                 }
@@ -972,10 +972,10 @@ namespace Portfolio.Character
             [SerializeField] internal Transform _bone;
 
             [Header("AIM LIMITS")]
-            [SerializeField] private float _minimumAimAngle = -75f;
-            [SerializeField] private float _maximumAimAngle = 75f;
+            [SerializeField] internal float _minimumAimAngle = -75f;
+            [SerializeField] internal float _maximumAimAngle = 75f;
             [SerializeField] internal float _forwardAngleOffset;
-            [SerializeField] private float _rotationSpeed = 540f;
+            [SerializeField] internal float _rotationSpeed = 540f;
 
             internal Quaternion _baseLocalRotation;
             internal Quaternion _currentLocalRotation;
