@@ -13,12 +13,8 @@ public class SimulatedSplineLocomotionControllerEditor : Editor
 
     public override void OnInspectorGUI()
     {
-        serializedObject.Update();
-
         DrawScriptReference();
         DrawDefaultInspector();
-
-        serializedObject.ApplyModifiedProperties();
     }
 
     #endregion
