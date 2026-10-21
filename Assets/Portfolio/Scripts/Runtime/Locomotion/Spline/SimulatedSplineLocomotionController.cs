@@ -85,6 +85,7 @@ namespace Portfolio.Locomotion.Spline
 
         public Rigidbody2D Body => _body;
         public CapsuleCollider2D MainCollider => _capsuleCollider;
+        public Transform VisualRoot => _visualRoot;
         public GameInput Input => _gameInput;
         public LocomotionState State => _state;
         public SimulatedSplineMovement Movement => _movement;

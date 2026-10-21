@@ -64,6 +64,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public UnityEngine.Rigidbody2D Body => _body;
         public CapsuleCollider2D MainCollider => _capsuleCollider;
+        public Transform VisualRoot => _visualRoot;
         public GameInput Input => _gameInput;
         public LocomotionState State => _state;
         public RigidbodyMovement Movement => _movement;

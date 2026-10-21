@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using Portfolio.Locomotion.Core;
+using Portfolio.Locomotion.Rigidbody;
+using Portfolio.Locomotion.Spline;
 
 namespace Portfolio.Character
 {
@@ -22,8 +25,15 @@ namespace Portfolio.Character
 
         [Header("COMPONENTS")]
         [SerializeField] private Animator _animator;
-        [Tooltip("Transform whose horizontal scale reflects the character facing direction.")]
+        [Tooltip("Transform whose world-facing direction is used for head look-at.")]
         [SerializeField] private Transform _facingRoot;
+        [SerializeField] private RigidbodyLocomotionController _rigidbodyLocomotion;
+        [SerializeField] private SimulatedSplineLocomotionController _simulatedSplineLocomotion;
+
+        [Header("LOCOMOTION ANIMATION")]
+        [SerializeField] private bool _driveLocomotionAnimation = true;
+        [SerializeField, Min(0f)] private float _movementInputThreshold = 0.1f;
+        [SerializeField, Min(0f)] private float _movementSpeedThreshold = 0.1f;
 
         [Header("HEAD AIM")]
         [SerializeField] private AimBoneSettings _head = new AimBoneSettings(
@@ -82,6 +92,16 @@ namespace Portfolio.Character
             Initialize();
         }
 
+        private void Update()
+        {
+            if (!_initialized)
+            {
+                return;
+            }
+
+            UpdateLocomotionAnimation();
+        }
+
         private void LateUpdate()
         {
             if (!_initialized)
@@ -137,9 +157,34 @@ namespace Portfolio.Character
                 _animator = GetComponentInChildren<Animator>(true);
             }
 
+            if (_rigidbodyLocomotion == null)
+            {
+                _rigidbodyLocomotion = GetComponentInParent<RigidbodyLocomotionController>();
+            }
+
+            if (_simulatedSplineLocomotion == null)
+            {
+                _simulatedSplineLocomotion = GetComponentInParent<SimulatedSplineLocomotionController>();
+            }
+
             if (_facingRoot == null)
             {
-                _facingRoot = transform;
+                if (_rigidbodyLocomotion != null && _rigidbodyLocomotion.VisualRoot != null)
+                {
+                    _facingRoot = _rigidbodyLocomotion.VisualRoot;
+                }
+                else if (_simulatedSplineLocomotion != null && _simulatedSplineLocomotion.VisualRoot != null)
+                {
+                    _facingRoot = _simulatedSplineLocomotion.VisualRoot;
+                }
+                else if (_animator != null)
+                {
+                    _facingRoot = _animator.transform;
+                }
+                else
+                {
+                    _facingRoot = transform;
+                }
             }
 
             ResolveBone(_head);
@@ -357,6 +402,54 @@ namespace Portfolio.Character
             SetLookingUp(false);
             SetRunning(false);
             SetJumping(false);
+        }
+
+        #endregion
+
+        #region Locomotion Animation
+
+        private void UpdateLocomotionAnimation()
+        {
+            if (!_driveLocomotionAnimation || _animator == null)
+            {
+                return;
+            }
+
+            LocomotionState state;
+            Vector2 velocity;
+            float movementInput;
+
+            if (_rigidbodyLocomotion != null)
+            {
+                state = _rigidbodyLocomotion.State;
+                velocity = _rigidbodyLocomotion.Velocity;
+                movementInput = _rigidbodyLocomotion.MovementInput;
+            }
+            else if (_simulatedSplineLocomotion != null)
+            {
+                state = _simulatedSplineLocomotion.State;
+                velocity = _simulatedSplineLocomotion.Velocity;
+                movementInput = _simulatedSplineLocomotion.MovementInput;
+            }
+            else
+            {
+                return;
+            }
+
+            if (state == null)
+            {
+                return;
+            }
+
+            bool isMovingOnGround = state.Grounded &&
+                Mathf.Abs(movementInput) > _movementInputThreshold &&
+                Mathf.Abs(velocity.x) > _movementSpeedThreshold;
+
+            bool isAirborne = !state.Grounded &&
+                (state.IsJumping || state.Rising || state.Falling);
+
+            SetRunning(isMovingOnGround);
+            SetJumping(isAirborne);
         }
 
         #endregion
@@ -646,6 +739,13 @@ namespace Portfolio.Character
             }
 
             Transform facingRoot = _facingRoot != null ? _facingRoot : transform;
+            Vector3 worldRight = facingRoot.localToWorldMatrix.MultiplyVector(Vector3.right);
+
+            if (Mathf.Abs(worldRight.x) > 0.001f)
+            {
+                return Mathf.Sign(worldRight.x);
+            }
+
             return facingRoot.lossyScale.x < 0f ? -1f : 1f;
         }
 
@@ -873,6 +973,8 @@ namespace Portfolio.Character
             ValidateAim(_backForearm);
             _lookAtRadius = Mathf.Max(0f, _lookAtRadius);
             _maximumInterestAngle = Mathf.Clamp(_maximumInterestAngle, 0f, 90f);
+            _movementInputThreshold = Mathf.Max(0f, _movementInputThreshold);
+            _movementSpeedThreshold = Mathf.Max(0f, _movementSpeedThreshold);
 
             if (!Application.isPlaying)
             {
