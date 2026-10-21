@@ -40,6 +40,11 @@ public class RigidbodyLocomotionControllerEditor : Editor
     private SerializedProperty _fallGravityMultiplierProp;
     private SerializedProperty _maximumFallSpeedProp;
     private SerializedProperty _steepSlopeJumpCheckDistanceProp;
+    private SerializedProperty _groundAdhesionForceProp;
+    private SerializedProperty _exportGroundAdhesionLogProp;
+    private SerializedProperty _groundAdhesionLogIntervalProp;
+    private SerializedProperty _groundAdhesionLogPathProp;
+    private SerializedProperty _groundAdhesionLogErrorProp;
     private SerializedProperty _flipVisualWithFacingProp;
 
     //------------------------------- Internal Editors -------------------------------//
@@ -91,6 +96,7 @@ public class RigidbodyLocomotionControllerEditor : Editor
 
         serializedObject.Update();
 
+        DrawScriptReference();
         DrawChecks();
         DrawComponents();
         DrawMovement();
@@ -124,6 +130,11 @@ public class RigidbodyLocomotionControllerEditor : Editor
         _fallGravityMultiplierProp = serializedObject.FindProperty("_fallGravityMultiplier");
         _maximumFallSpeedProp = serializedObject.FindProperty("_maximumFallSpeed");
         _steepSlopeJumpCheckDistanceProp = serializedObject.FindProperty("_steepSlopeJumpCheckDistance");
+        _groundAdhesionForceProp = serializedObject.FindProperty("_groundAdhesionForce");
+        _exportGroundAdhesionLogProp = serializedObject.FindProperty("_exportGroundAdhesionLog");
+        _groundAdhesionLogIntervalProp = serializedObject.FindProperty("_groundAdhesionLogInterval");
+        _groundAdhesionLogPathProp = serializedObject.FindProperty("_groundAdhesionLogPath");
+        _groundAdhesionLogErrorProp = serializedObject.FindProperty("_groundAdhesionLogError");
         _flipVisualWithFacingProp = serializedObject.FindProperty("_flipVisualWithFacing");
     }
 
@@ -147,6 +158,7 @@ public class RigidbodyLocomotionControllerEditor : Editor
         EnsureFoldout(MovementFoldoutKey, true);
         EnsureFoldout(JumpFoldoutKey, true);
         EnsureFoldout(PhysicsFoldoutKey, false);
+        EnsureFoldout("Ground Adhesion", true);
         EnsureFoldout(ExternalForcesFoldoutKey, false);
         EnsureFoldout(DebuggingFoldoutKey, false);
     }
@@ -201,6 +213,13 @@ public class RigidbodyLocomotionControllerEditor : Editor
     }
 
     //------------------------------- Draw -------------------------------//
+
+    private void DrawScriptReference()
+    {
+        MonoScript script = MonoScript.FromMonoBehaviour(target as MonoBehaviour);
+        EditorGUILayout.ObjectField("Script", script, typeof(MonoScript), false);
+        EditorGUILayout.Space(3f);
+    }
 
     private void DrawChecks()
     {
@@ -295,6 +314,21 @@ public class RigidbodyLocomotionControllerEditor : Editor
                 DrawProperty(_fallGravityMultiplierProp);
                 DrawProperty(_maximumFallSpeedProp);
                 DrawProperty(_steepSlopeJumpCheckDistanceProp);
+            });
+
+        DrawFoldoutSection(
+            "Ground Adhesion",
+            () =>
+            {
+                DrawProperty(_groundAdhesionForceProp);
+                DrawProperty(_exportGroundAdhesionLogProp);
+                DrawProperty(_groundAdhesionLogIntervalProp);
+
+                using (new EditorGUI.DisabledScope(true))
+                {
+                    DrawProperty(_groundAdhesionLogPathProp);
+                    DrawProperty(_groundAdhesionLogErrorProp);
+                }
             });
     }
 
