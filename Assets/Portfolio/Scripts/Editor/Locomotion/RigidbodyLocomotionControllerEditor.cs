@@ -281,7 +281,7 @@ public class RigidbodyLocomotionControllerEditor : Editor
                 DrawProperty(_capsuleColliderProp);
                 DrawProperty(_visualRootProp);
                 DrawProperty(_gameInputProp);
-                DrawProperty(_controlEnabledProp);
+                DrawProperty(_stateProp, true);
                 DrawProperty(_flipVisualWithFacingProp);
             });
     }
