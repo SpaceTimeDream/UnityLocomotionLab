@@ -35,7 +35,9 @@ namespace Portfolio.Locomotion.Rigidbody
         private bool _hasDirectSurface;
         private float _groundedTime;
         private float _groundingGraceRemainingTime;
+        private string _lastProbeResult = "Not probed";
 
+        public string LastProbeResult => _lastProbeResult;
         public float MaximumWalkableSlopeAngle => _maximumWalkableSlopeAngle;
         public Collider2D SurfaceCollider => _surfaceCollider;
         public Vector2 SurfaceNormal => _surfaceNormal;
@@ -85,6 +87,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
             if (ignoreGrounding)
             {
+                _lastProbeResult = "Grounding ignored";
                 ClearSurface(state);
                 return;
             }
@@ -97,10 +100,12 @@ namespace Portfolio.Locomotion.Rigidbody
             {
                 if (IsSeparatingFromSurface(body.linearVelocity, contactNormal))
                 {
+                    _lastProbeResult = "Body contact rejected: moving away from surface";
                     ClearSurface(state);
                     return;
                 }
 
+                _lastProbeResult = $"Body contact: {contactCollider.name}";
                 ApplySurface(contactCollider, contactNormal, state);
                 return;
             }
@@ -145,10 +150,12 @@ namespace Portfolio.Locomotion.Rigidbody
 
             if (IsSeparatingFromSurface(body.linearVelocity, bestHit.normal))
             {
+                _lastProbeResult = $"Raycast rejected: moving away from {bestHit.collider.name}";
                 ClearSurface(state);
                 return;
             }
 
+            _lastProbeResult = $"Raycast support: {bestHit.collider.name}";
             ApplySurface(bestHit.collider, bestHit.normal, state);
         }
 
@@ -240,6 +247,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 _groundingGraceRemainingTime <= 0f ||
                 IsSeparatingFromSurface(velocity, _surfaceNormal))
             {
+                _lastProbeResult = "No support hit: not grounded";
                 ClearSurface(state);
                 return;
             }
@@ -250,9 +258,12 @@ namespace Portfolio.Locomotion.Rigidbody
 
             if (_groundingGraceRemainingTime <= 0f)
             {
+                _lastProbeResult = "No support hit: grounding grace expired";
                 ClearSurface(state);
                 return;
             }
+
+            _lastProbeResult = "No direct support hit: using grounding grace";
 
             float slopeAngle = Vector2.Angle(_surfaceNormal, Vector2.up);
             bool walkable = _surfaceNormal.y > 0f &&
