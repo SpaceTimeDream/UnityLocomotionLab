@@ -29,7 +29,6 @@ public class RigidbodyLocomotionControllerEditor : Editor
     private SerializedProperty _visualRootProp;
     private SerializedProperty _gameInputProp;
     private SerializedProperty _stateProp;
-    private SerializedProperty _controlEnabledProp;
     private SerializedProperty _movementProp;
     private SerializedProperty _jumpProp;
     private SerializedProperty _surfaceProbeProp;
@@ -119,7 +118,6 @@ public class RigidbodyLocomotionControllerEditor : Editor
         _visualRootProp = serializedObject.FindProperty("_visualRoot");
         _gameInputProp = serializedObject.FindProperty("_gameInput");
         _stateProp = serializedObject.FindProperty("_state");
-        _controlEnabledProp = _stateProp?.FindPropertyRelative("_controlEnabled");
         _movementProp = serializedObject.FindProperty("_movement");
         _jumpProp = serializedObject.FindProperty("_jump");
         _surfaceProbeProp = serializedObject.FindProperty("_surfaceProbe");
