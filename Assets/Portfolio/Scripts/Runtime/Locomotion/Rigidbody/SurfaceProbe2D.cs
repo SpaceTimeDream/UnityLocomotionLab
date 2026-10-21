@@ -32,11 +32,14 @@ namespace Portfolio.Locomotion.Rigidbody
         private bool _initialized;
         private Collider2D _surfaceCollider;
         private Vector2 _surfaceNormal = Vector2.up;
+        private bool _hasDirectSurface;
         private float _groundedTime;
         private float _groundingGraceRemainingTime;
 
         public float MaximumWalkableSlopeAngle => _maximumWalkableSlopeAngle;
         public Collider2D SurfaceCollider => _surfaceCollider;
+        public Vector2 SurfaceNormal => _surfaceNormal;
+        public bool HasDirectSurface => _hasDirectSurface;
         public float GroundedTime => _groundedTime;
         public bool IsSteepSlopeJumpRestricted =>
             _surfaceCollider != null && Vector2.Angle(_surfaceNormal, Vector2.up) >= _steepSlopeJumpRestrictionAngle;
@@ -221,6 +224,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void ClearSurface(LocomotionState state)
         {
+            _hasDirectSurface = false;
             _surfaceCollider = null;
             _surfaceNormal = Vector2.up;
             _groundedTime = 0f;
@@ -230,6 +234,8 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void HandleMissingSurface(Vector2 velocity, LocomotionState state)
         {
+            _hasDirectSurface = false;
+
             if (_surfaceCollider == null ||
                 _groundingGraceRemainingTime <= 0f ||
                 IsSeparatingFromSurface(velocity, _surfaceNormal))
@@ -307,6 +313,7 @@ namespace Portfolio.Locomotion.Rigidbody
             Vector2 surfaceNormal,
             LocomotionState state)
         {
+            _hasDirectSurface = true;
             float slopeAngle = Vector2.Angle(surfaceNormal, Vector2.up);
             bool onWalkableSlope = surfaceNormal.y > 0f &&
                 slopeAngle > _slopeAngleThreshold &&
