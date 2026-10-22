@@ -22,6 +22,11 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void Awake()
         {
+            RefreshComponents();
+        }
+
+        public void RefreshComponents()
+        {
             _controller = GetComponent<RigidbodyLocomotionController>();
             Handler = GetComponent<PlayerHandler>();
             Jump = GetComponent<PlayerJump>();
