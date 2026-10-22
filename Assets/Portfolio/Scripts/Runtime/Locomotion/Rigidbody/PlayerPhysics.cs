@@ -11,7 +11,12 @@ namespace Portfolio.Locomotion.Rigidbody
     [DisallowMultipleComponent]
     public sealed class PlayerPhysics : MonoBehaviour
     {
-        public void ProbeGround(
+        /// <summary>
+        /// Performs the ground check and returns the accepted grounded state.
+        /// SurfaceProbe2D performs the filtered Ground-layer contacts/raycasts/capsule cast
+        /// and writes the result into LocomotionState; a raw physics hit alone is not enough.
+        /// </summary>
+        public bool CheckGrounded(
             CapsuleCollider2D capsule,
             UnityEngine.Rigidbody2D body,
             LocomotionState state,
@@ -19,10 +24,11 @@ namespace Portfolio.Locomotion.Rigidbody
             RigidbodyJump jump)
         {
             if (capsule == null || body == null || state == null || surfaceProbe == null || jump == null)
-                return;
+                return false;
 
             surfaceProbe.Probe(capsule, body, state, jump.ShouldIgnoreGrounding);
             jump.SetSteepSlopeJumpRestriction(surfaceProbe.IsSteepSlopeJumpRestricted);
+            return state.Grounded;
         }
 
         public void ApplyGravity(
