@@ -90,6 +90,23 @@ namespace Portfolio.Locomotion.Rigidbody
 
         //------------------------------- Core / Routines Methods -------------------------------//
 
+        /// <summary>
+        /// Explicit grounded query. Probe performs the filtered contact, Ground-layer raycast
+        /// array and capsule-cast checks, then records the accepted result in LocomotionState.
+        /// </summary>
+        public bool CheckGrounded(
+            CapsuleCollider2D capsuleCollider,
+            UnityEngine.Rigidbody2D body,
+            LocomotionState state,
+            bool ignoreGrounding)
+        {
+            if (state == null)
+                return false;
+
+            Probe(capsuleCollider, body, state, ignoreGrounding);
+            return state.Grounded;
+        }
+
         public void Probe(
             CapsuleCollider2D capsuleCollider,
             UnityEngine.Rigidbody2D body,
