@@ -487,7 +487,11 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private bool IsSeparatingFromSurface(Vector2 velocity, Vector2 surfaceNormal)
         {
-            return Vector2.Dot(velocity, surfaceNormal) > _risingGroundedVelocityThreshold;
+            // Horizontal locomotion across a slope can have a large velocity component along
+            // the surface normal even when the character is not jumping away from the ground.
+            // Use upward world-space velocity for jump separation so lateral movement alone
+            // cannot invalidate grounding on sloped terrain.
+            return velocity.y > _risingGroundedVelocityThreshold;
         }
 
 #if UNITY_EDITOR
