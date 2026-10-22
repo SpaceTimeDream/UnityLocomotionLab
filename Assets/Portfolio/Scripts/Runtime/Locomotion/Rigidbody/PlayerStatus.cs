@@ -29,6 +29,12 @@ namespace Portfolio.Locomotion.Rigidbody
                 _state = new LocomotionState();
         }
 
+        public void SetControlEnabled(bool enabled)
+        {
+            if (_state != null)
+                _state.SetControlEnabled(enabled);
+        }
+
         public void ResetRuntimeState()
         {
             if (_state != null)
