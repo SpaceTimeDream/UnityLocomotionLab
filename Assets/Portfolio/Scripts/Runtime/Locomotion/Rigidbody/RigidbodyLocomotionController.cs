@@ -60,6 +60,12 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private string _groundAdhesionLogPath;
         [SerializeField] private string _groundAdhesionLogError;
 
+        [Header("GROUNDING DEBUG")]
+        [SerializeField] private bool _debugGrounding;
+        [SerializeField] private bool _pauseOnAirborne;
+        [SerializeField] private bool _drawGroundingGizmos = true;
+        [SerializeField] private float _groundingDebugLogInterval = 0.25f;
+
         [Header("FACING PARAMETERS")]
         [SerializeField] private bool _flipVisualWithFacing = true;
 
@@ -73,6 +79,9 @@ namespace Portfolio.Locomotion.Rigidbody
         private float _groundAdhesionLogTimer;
         private string _lastGroundAdhesionDecision = "Not evaluated";
         private bool _lastGroundAdhesionApplied;
+        private bool _wasGroundedForDebug;
+        private bool _airbornePauseTriggered;
+        private float _groundingDebugLogTimer;
 
         public UnityEngine.Rigidbody2D Body => _body;
         public CapsuleCollider2D MainCollider => _capsuleCollider;
@@ -439,6 +448,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 _externalForces.HasExternalForce);
             _horizontalDistancePerFixedFrame = Mathf.Abs(_body.position.x - previousPosition.x);
             RecordGroundAdhesionLog();
+            CheckGroundingDebug();
         }
 
         private void RefreshGameInput()
@@ -737,6 +747,131 @@ namespace Portfolio.Locomotion.Rigidbody
             return $"\"{value.Replace("\"", "\"\"")}\"";
         }
 
+        private void CheckGroundingDebug()
+        {
+            if (_state.Grounded)
+            {
+                _wasGroundedForDebug = true;
+                _airbornePauseTriggered = false;
+                _groundingDebugLogTimer = 0f;
+                return;
+            }
+
+            bool justBecameAirborne = _wasGroundedForDebug;
+            _wasGroundedForDebug = false;
+
+            if (!_debugGrounding && !_pauseOnAirborne)
+            {
+                return;
+            }
+
+            _groundingDebugLogTimer += Time.fixedDeltaTime;
+            if (justBecameAirborne || _groundingDebugLogTimer >= _groundingDebugLogInterval)
+            {
+                LogGroundingFailure(justBecameAirborne ? "Grounded -> Airborne transition" : "Still not grounded");
+                _groundingDebugLogTimer = 0f;
+            }
+
+            if (!_pauseOnAirborne || _airbornePauseTriggered)
+            {
+                return;
+            }
+
+            _airbornePauseTriggered = true;
+            LogGroundingFailure("PAUSING PLAY MODE: player is not grounded");
+
+#if UNITY_EDITOR
+            if (Application.isPlaying)
+            {
+                Debug.Break();
+            }
+#endif
+        }
+
+        private void LogGroundingFailure(string reason)
+        {
+            Vector2 velocity = _body != null ? _body.linearVelocity : Vector2.zero;
+            Bounds bounds = _capsuleCollider != null ? _capsuleCollider.bounds : new Bounds();
+            Vector2 normal = _surfaceProbe != null ? _surfaceProbe.SurfaceNormal : Vector2.up;
+            float normalVelocity = Vector2.Dot(velocity, normal.normalized);
+            string surfaceName = _surfaceProbe != null && _surfaceProbe.SurfaceCollider != null
+                ? _surfaceProbe.SurfaceCollider.name
+                : "None";
+
+            Debug.LogWarning(
+                $"[Rigidbody Grounding Debug] {reason}\n" +
+                $"Object: {name}\n" +
+                $"Time: {Time.time:F3}, FixedTime: {Time.fixedTime:F3}, Frame: {Time.frameCount}\n" +
+                $"Position: {_body.position}, Collider Bounds Center: {bounds.center}, Size: {bounds.size}\n" +
+                $"Grounded: {_state.Grounded}, Direct Surface: {_surfaceProbe.HasDirectSurface}, Surface: {surfaceName}\n" +
+                $"Probe Result: {_surfaceProbe.LastProbeResult}\n" +
+                $"Surface Normal: {normal}, Slope Angle: {Vector2.Angle(normal, Vector2.up):F2}, Velocity Along Normal: {normalVelocity:F3}\n" +
+                $"Velocity: {velocity}, Movement Input: {_movementInput}, Horizontal Distance / Fixed Frame: {_horizontalDistancePerFixedFrame:F4}\n" +
+                $"Probe Distance: {_surfaceProbe.ProbeDistance:F3}, Probe Inset: {_surfaceProbe.ProbeInset:F3}, Ground Point: {(_surfaceProbe.GroundPoint != null ? _surfaceProbe.GroundPoint.position.ToString() : "Not assigned")}\n" +
+                $"Jump Ascent: {_jump.IsInJumpAscentState}, Anticipation: {_jump.IsInAnticipationFrame}, Ignore Grounding: {_jump.ShouldIgnoreGrounding}\n" +
+                $"External Force: {_externalForces.HasExternalForce}, Adhesion Applied: {_lastGroundAdhesionApplied}, Adhesion Decision: {_lastGroundAdhesionDecision}\n" +
+                $"Gravity Scale: {_body.gravityScale}, Rigidbody Type: {_body.bodyType}, Simulated: {_body.simulated}",
+                this);
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            if (!_drawGroundingGizmos)
+            {
+                return;
+            }
+
+            CapsuleCollider2D capsule = _capsuleCollider != null
+                ? _capsuleCollider
+                : GetComponent<CapsuleCollider2D>();
+
+            if (capsule == null)
+            {
+                return;
+            }
+
+            Bounds bounds = capsule.bounds;
+            float probeDistance = _surfaceProbe != null ? _surfaceProbe.ProbeDistance : 0.2f;
+            float probeInset = _surfaceProbe != null ? _surfaceProbe.ProbeInset : 0.04f;
+            float originOffset = _surfaceProbe != null ? _surfaceProbe.GroundPointOriginOffset : 0.03f;
+            Transform groundPoint = _surfaceProbe != null ? _surfaceProbe.GroundPoint : null;
+            Vector2 center = groundPoint != null
+                ? (Vector2)groundPoint.position + Vector2.up * originOffset
+                : (Vector2)bounds.center;
+            float rayLength = groundPoint != null
+                ? probeDistance + originOffset
+                : bounds.extents.y + probeDistance;
+            float leftX = bounds.min.x + probeInset;
+            float rightX = bounds.max.x - probeInset;
+
+            Gizmos.color = _state != null && _state.Grounded
+                ? (_surfaceProbe != null && _surfaceProbe.HasDirectSurface ? Color.green : Color.yellow)
+                : Color.red;
+            Gizmos.DrawWireCube(bounds.center, bounds.size);
+            DrawGroundProbeGizmo(center, rayLength);
+            DrawGroundProbeGizmo(new Vector2(leftX, center.y), rayLength);
+            DrawGroundProbeGizmo(new Vector2(rightX, center.y), rayLength);
+
+            if (groundPoint != null)
+            {
+                Gizmos.color = Color.cyan;
+                Gizmos.DrawSphere(groundPoint.position, 0.035f);
+            }
+
+            if (_surfaceProbe != null && _surfaceProbe.SurfaceCollider != null)
+            {
+                Gizmos.color = Color.blue;
+                Vector3 normalStart = bounds.center;
+                Gizmos.DrawLine(normalStart, normalStart + (Vector3)(_surfaceProbe.SurfaceNormal * 0.5f));
+            }
+        }
+
+        private void DrawGroundProbeGizmo(Vector2 origin, float distance)
+        {
+            Gizmos.DrawSphere(origin, 0.025f);
+            Gizmos.DrawLine(origin, origin + Vector2.down * distance);
+        }
+
         private void HandleJumpPressed()
         {
             if (_state.ControlEnabled && !_movementFrozen)
@@ -762,6 +897,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _steepSlopeJumpCheckDistance = Mathf.Max(0.01f, _steepSlopeJumpCheckDistance);
             _groundAdhesionForce = Mathf.Max(0f, _groundAdhesionForce);
             _groundAdhesionLogInterval = Mathf.Max(0.01f, _groundAdhesionLogInterval);
+            _groundingDebugLogInterval = Mathf.Max(0.01f, _groundingDebugLogInterval);
             _movement?.Validate();
             _jump?.Validate();
             _surfaceProbe?.Validate();
