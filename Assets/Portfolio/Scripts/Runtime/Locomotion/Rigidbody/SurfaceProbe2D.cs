@@ -16,9 +16,11 @@ namespace Portfolio.Locomotion.Rigidbody
 
         [Header("GROUND CHECK PARAMETERS")]
         [SerializeField] private LayerMask _groundLayers = Physics2D.DefaultRaycastLayers;
-        [SerializeField] private float _probeDistance = 0.08f;
+        [SerializeField] private float _probeDistance = 0.2f;
+        [SerializeField] private Transform _groundPoint;
+        [SerializeField] private float _groundPointOriginOffset = 0.03f;
         [SerializeField] private float _probeInset = 0.04f;
-        [SerializeField] private float _risingGroundedVelocityThreshold = 0.1f;
+        [SerializeField] private float _risingGroundedVelocityThreshold = 0.75f;
         [SerializeField] private float _groundingGraceDuration = 0.06f;
 
         [Header("SLOPE CHECK PARAMETERS")]
@@ -113,8 +115,15 @@ namespace Portfolio.Locomotion.Rigidbody
             Bounds bounds = capsuleCollider.bounds;
             float rayLength = bounds.extents.y + _probeDistance;
             Vector2 originCenter = bounds.center;
-            Vector2 originLeft = new Vector2(bounds.min.x + _probeInset, bounds.center.y);
-            Vector2 originRight = new Vector2(bounds.max.x - _probeInset, bounds.center.y);
+
+            if (_groundPoint != null)
+            {
+                originCenter = (Vector2)_groundPoint.position + Vector2.up * _groundPointOriginOffset;
+                rayLength = _probeDistance + _groundPointOriginOffset;
+            }
+
+            Vector2 originLeft = new Vector2(bounds.min.x + _probeInset, originCenter.y);
+            Vector2 originRight = new Vector2(bounds.max.x - _probeInset, originCenter.y);
 
             RaycastHit2D bestWalkableHit = default;
             RaycastHit2D bestSteepHit = default;
@@ -134,6 +143,11 @@ namespace Portfolio.Locomotion.Rigidbody
                 originRight,
                 rayLength,
                 capsuleCollider,
+                ref bestWalkableHit,
+                ref bestSteepHit);
+            CollectBestShapeCastHits(
+                capsuleCollider,
+                _probeDistance,
                 ref bestWalkableHit,
                 ref bestSteepHit);
 
@@ -218,6 +232,7 @@ namespace Portfolio.Locomotion.Rigidbody
         public void Validate()
         {
             _probeDistance = Mathf.Max(0.01f, _probeDistance);
+            _groundPointOriginOffset = Mathf.Max(0.001f, _groundPointOriginOffset);
             _probeInset = Mathf.Max(0f, _probeInset);
             _risingGroundedVelocityThreshold = Mathf.Max(0f, _risingGroundedVelocityThreshold);
             _groundingGraceDuration = Mathf.Max(0f, _groundingGraceDuration);
@@ -373,6 +388,35 @@ namespace Portfolio.Locomotion.Rigidbody
                 }
 
                 if (hit.normal.y <= 0f)
+                {
+                    continue;
+                }
+
+                float slopeAngle = Vector2.Angle(hit.normal, Vector2.up);
+
+                if (slopeAngle <= _maximumWalkableSlopeAngle)
+                {
+                    SetCloserHit(hit, ref bestWalkableHit);
+                    continue;
+                }
+
+                SetCloserHit(hit, ref bestSteepHit);
+            }
+        }
+
+        private void CollectBestShapeCastHits(
+            CapsuleCollider2D capsuleCollider,
+            float distance,
+            ref RaycastHit2D bestWalkableHit,
+            ref RaycastHit2D bestSteepHit)
+        {
+            int hitCount = capsuleCollider.Cast(Vector2.down, _contactFilter, _hits, distance);
+
+            for (int i = 0; i < hitCount; i++)
+            {
+                RaycastHit2D hit = _hits[i];
+
+                if (hit.collider == null || hit.collider.isTrigger || hit.normal.y <= 0f)
                 {
                     continue;
                 }
