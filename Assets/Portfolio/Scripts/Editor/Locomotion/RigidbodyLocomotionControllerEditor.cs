@@ -350,6 +350,35 @@ public class RigidbodyLocomotionControllerEditor : Editor
                 DrawProperty(_pauseOnAirborneProp);
                 DrawProperty(_drawGroundingGizmosProp);
                 DrawProperty(_groundingDebugLogIntervalProp);
+
+                if (Application.isPlaying && _controller != null)
+                {
+                    EditorGUILayout.Space(3f);
+                    EditorGUILayout.LabelField("Grounding Runtime", EditorStyles.boldLabel);
+                    using (new EditorGUI.DisabledScope(true))
+                    {
+                        EditorGUILayout.Toggle("Grounded", _controller.State.Grounded);
+                        EditorGUILayout.Toggle("Direct Surface", _controller.SurfaceProbe.HasDirectSurface);
+                        EditorGUILayout.TextField(
+                            "Probe Result",
+                            _controller.SurfaceProbe.LastProbeResult);
+                        EditorGUILayout.TextField(
+                            "Surface Collider",
+                            _controller.SurfaceProbe.SurfaceCollider != null
+                                ? _controller.SurfaceProbe.SurfaceCollider.name
+                                : "None");
+                        EditorGUILayout.Vector2Field("Surface Normal", _controller.SurfaceProbe.SurfaceNormal);
+                        EditorGUILayout.FloatField(
+                            "Surface Angle",
+                            Vector2.Angle(_controller.SurfaceProbe.SurfaceNormal, Vector2.up));
+                        EditorGUILayout.FloatField(
+                            "Velocity Along Normal",
+                            Vector2.Dot(_controller.Velocity, _controller.SurfaceProbe.SurfaceNormal));
+                        EditorGUILayout.Toggle("Ignore Grounding For Jump", _controller.Jump.ShouldIgnoreGrounding);
+                        EditorGUILayout.TextField("Adhesion Decision", _controller.LastGroundAdhesionDecision);
+                    }
+                }
+
                 EditorGUILayout.HelpBox(
                     "Pause On Airborne calls Debug.Break in the Unity Editor when the controller reports not grounded. " +
                     "The Console log includes the probe result, collider, velocity, normal, jump state, and adhesion decision. " +
