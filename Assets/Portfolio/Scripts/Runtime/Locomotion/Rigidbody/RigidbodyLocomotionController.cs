@@ -238,6 +238,8 @@ namespace Portfolio.Locomotion.Rigidbody
                 _playerStatus = GetComponent<PlayerStatus>();
             if (_playerStatus == null)
                 _playerStatus = gameObject.AddComponent<PlayerStatus>();
+
+            _playerController.RefreshComponents();
         }
 
         private void InitializeComponents()
