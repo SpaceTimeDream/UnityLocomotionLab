@@ -38,8 +38,10 @@ namespace Portfolio.Locomotion.Rigidbody
         private float _groundedTime;
         private float _groundingGraceRemainingTime;
         private string _lastProbeResult = "Not probed";
+        private string _lastProbeDetails = "Not probed";
 
         public string LastProbeResult => _lastProbeResult;
+        public string LastProbeDetails => _lastProbeDetails;
         public float ProbeDistance => _probeDistance;
         public float ProbeInset => _probeInset;
         public float GroundPointOriginOffset => _groundPointOriginOffset;
@@ -112,6 +114,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 }
 
                 _lastProbeResult = $"Body contact: {contactCollider.name}";
+                _lastProbeDetails = $"Body contact collider={contactCollider.name}, normal={contactNormal}";
                 ApplySurface(contactCollider, contactNormal, state);
                 return;
             }
@@ -129,6 +132,7 @@ namespace Portfolio.Locomotion.Rigidbody
             Vector2 originLeft = new Vector2(bounds.min.x + _probeInset, originCenter.y);
             Vector2 originRight = new Vector2(bounds.max.x - _probeInset, originCenter.y);
 
+            _lastProbeDetails = string.Empty;
             RaycastHit2D bestWalkableHit = default;
             RaycastHit2D bestSteepHit = default;
             CollectBestSupportHits(
@@ -381,22 +385,27 @@ namespace Portfolio.Locomotion.Rigidbody
             ref RaycastHit2D bestSteepHit)
         {
             int hitCount = Physics2D.Raycast(origin, Vector2.down, _contactFilter, _hits, distance);
+            _lastProbeDetails += $"Ray origin={origin}, length={distance:F3}, hits={hitCount}. ";
 
             for (int i = 0; i < hitCount; i++)
             {
                 RaycastHit2D hit = _hits[i];
 
-                if (hit.collider == null || hit.collider == ignoredCollider || hit.collider.isTrigger)
+                if (hit.collider == null)
+                {
+                    _lastProbeDetails += $"Hit {i}: null collider. ";
+                    continue;
+                }
+
+                float hitSlopeAngle = Vector2.Angle(hit.normal, Vector2.up);
+                _lastProbeDetails += $"Hit {i}: {hit.collider.name}, distance={hit.distance:F3}, normal={hit.normal}, angle={hitSlopeAngle:F1}, trigger={hit.collider.isTrigger}. ";
+
+                if (hit.collider == ignoredCollider || hit.collider.isTrigger || hit.normal.y <= 0f)
                 {
                     continue;
                 }
 
-                if (hit.normal.y <= 0f)
-                {
-                    continue;
-                }
-
-                float slopeAngle = Vector2.Angle(hit.normal, Vector2.up);
+                float slopeAngle = hitSlopeAngle;
 
                 if (slopeAngle <= _maximumWalkableSlopeAngle)
                 {
@@ -415,17 +424,27 @@ namespace Portfolio.Locomotion.Rigidbody
             ref RaycastHit2D bestSteepHit)
         {
             int hitCount = capsuleCollider.Cast(Vector2.down, _contactFilter, _hits, distance);
+            _lastProbeDetails += $"Capsule cast direction=down, distance={distance:F3}, hits={hitCount}. ";
 
             for (int i = 0; i < hitCount; i++)
             {
                 RaycastHit2D hit = _hits[i];
 
-                if (hit.collider == null || hit.collider.isTrigger || hit.normal.y <= 0f)
+                if (hit.collider == null)
+                {
+                    _lastProbeDetails += $"Cast hit {i}: null collider. ";
+                    continue;
+                }
+
+                float hitSlopeAngle = Vector2.Angle(hit.normal, Vector2.up);
+                _lastProbeDetails += $"Cast hit {i}: {hit.collider.name}, distance={hit.distance:F3}, normal={hit.normal}, angle={hitSlopeAngle:F1}, trigger={hit.collider.isTrigger}. ";
+
+                if (hit.collider.isTrigger || hit.normal.y <= 0f)
                 {
                     continue;
                 }
 
-                float slopeAngle = Vector2.Angle(hit.normal, Vector2.up);
+                float slopeAngle = hitSlopeAngle;
 
                 if (slopeAngle <= _maximumWalkableSlopeAngle)
                 {
