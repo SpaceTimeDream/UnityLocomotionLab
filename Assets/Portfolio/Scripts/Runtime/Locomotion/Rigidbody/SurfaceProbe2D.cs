@@ -93,9 +93,11 @@ namespace Portfolio.Locomotion.Rigidbody
                 Initialize();
             }
 
+            _lastProbeDetails = "Probe started.";
             if (ignoreGrounding)
             {
                 _lastProbeResult = "Grounding ignored";
+                _lastProbeDetails = "Grounding ignored by jump suppression.";
                 ClearSurface(state);
                 return;
             }
@@ -109,6 +111,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 if (IsSeparatingFromSurface(body.linearVelocity, contactNormal))
                 {
                     _lastProbeResult = "Body contact rejected: moving away from surface";
+                    _lastProbeDetails = $"Body contact rejected: collider={contactCollider.name}, normal={contactNormal}, velocity={body.linearVelocity}, velocityAlongNormal={Vector2.Dot(body.linearVelocity, contactNormal):F3}, threshold={_risingGroundedVelocityThreshold:F3}.";
                     ClearSurface(state);
                     return;
                 }
