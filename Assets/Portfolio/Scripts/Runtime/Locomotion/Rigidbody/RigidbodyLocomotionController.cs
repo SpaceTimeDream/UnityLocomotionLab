@@ -337,7 +337,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public void SetControlEnabled(bool controlEnabled)
         {
-            _state.SetControlEnabled(controlEnabled);
+            _playerStatus.SetControlEnabled(controlEnabled);
 
             if (!controlEnabled)
             {
