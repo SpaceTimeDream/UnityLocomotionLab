@@ -40,6 +40,10 @@ namespace Portfolio.Locomotion.Rigidbody
         private string _lastProbeResult = "Not probed";
 
         public string LastProbeResult => _lastProbeResult;
+        public float ProbeDistance => _probeDistance;
+        public float ProbeInset => _probeInset;
+        public float GroundPointOriginOffset => _groundPointOriginOffset;
+        public Transform GroundPoint => _groundPoint;
         public float MaximumWalkableSlopeAngle => _maximumWalkableSlopeAngle;
         public Collider2D SurfaceCollider => _surfaceCollider;
         public Vector2 SurfaceNormal => _surfaceNormal;
