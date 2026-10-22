@@ -79,8 +79,6 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private float _movementInput;
         private float _facingDirection = 1f;
-        private Vector2 _cachedPausedVelocity;
-        private float _cachedPausedGravityScale;
         private float _horizontalDistancePerFixedFrame;
         private float _steepSlopeBlockDirection;
         private StreamWriter _groundAdhesionLogWriter;
@@ -115,8 +113,8 @@ namespace Portfolio.Locomotion.Rigidbody
         public float HorizontalDistancePerFixedFrame => _horizontalDistancePerFixedFrame;
         public float SteepSlopeBlockDirection => _steepSlopeBlockDirection;
         public string LastGroundAdhesionDecision => _lastGroundAdhesionDecision;
-        public bool IsMovementFrozen => _movementFrozen;
-        public bool IsScriptedControlActive => _scriptedControlActive;
+        public bool IsMovementFrozen => _playerHandler != null && _playerHandler.IsMovementFrozen;
+        public bool IsScriptedControlActive => _playerHandler != null && _playerHandler.IsScriptedControlActive;
 
         public event Action<float> DirectionChanged;
         public event Action JumpTriggered;
@@ -126,9 +124,9 @@ namespace Portfolio.Locomotion.Rigidbody
         #region Flags
 
         private bool _initialized;
-        private bool _movementFrozen;
-        private bool _scriptedControlActive;
-        private Vector2 _scriptedMoveInput;
+        private bool _movementFrozen => _playerHandler != null && _playerHandler.IsMovementFrozen;
+        private bool _scriptedControlActive => _playerHandler != null && _playerHandler.IsScriptedControlActive;
+        private Vector2 _scriptedMoveInput => _playerHandler != null ? _playerHandler.ScriptedMoveInput : Vector2.zero;
 
         #endregion
 
@@ -190,7 +188,6 @@ namespace Portfolio.Locomotion.Rigidbody
             InitializeModules();
             InitializeComponents();
             InitializeEvents();
-            _cachedPausedGravityScale = _body.gravityScale;
             _initialized = true;
         }
 
@@ -299,18 +296,12 @@ namespace Portfolio.Locomotion.Rigidbody
         }
         public void BeginScriptedControl()
         {
-            _scriptedMoveInput = Vector2.zero;
-            _scriptedControlActive = true;
+            _playerHandler.BeginScriptedControl();
         }
 
         public void SetScriptedMoveInput(Vector2 input)
         {
-            if (!_scriptedControlActive)
-            {
-                return;
-            }
-
-            _scriptedMoveInput = Vector2.ClampMagnitude(input, 1f);
+            _playerHandler.SetScriptedMoveInput(input);
         }
 
         public void StopScriptedHorizontalMotion()
@@ -327,9 +318,8 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public void EndScriptedControl()
         {
-            _scriptedMoveInput = Vector2.zero;
+            _playerHandler.EndScriptedControl();
             SetMovementInput(0f);
-            _scriptedControlActive = false;
         }
 
         public void RequestJump()
@@ -358,25 +348,19 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public void FreezeMovement()
         {
-            if (_movementFrozen || _body == null)
-            {
+            if (_body == null || _playerHandler.IsMovementFrozen)
                 return;
-            }
 
-            _movementFrozen = true;
-            _playerHandler.Freeze(_body, _body.gravityScale, out _cachedPausedVelocity, out _cachedPausedGravityScale);
+            _playerHandler.Freeze(_body);
             SetMovementInput(0f);
         }
 
         public void UnFreezeMovement()
         {
-            if (!_movementFrozen || _body == null)
-            {
+            if (_body == null || !_playerHandler.IsMovementFrozen)
                 return;
-            }
 
-            _movementFrozen = false;
-            _playerHandler.Unfreeze(_body, _cachedPausedVelocity, _cachedPausedGravityScale);
+            _playerHandler.Unfreeze(_body);
         }
 
         public void ZeroVelocity()
@@ -393,8 +377,7 @@ namespace Portfolio.Locomotion.Rigidbody
         public void ResetLocomotionRuntimeState()
         {
             SetMovementInput(0f);
-            _scriptedMoveInput = Vector2.zero;
-            _scriptedControlActive = false;
+            _playerHandler.ResetRuntimeState();
             SetFacingDirection(1f);
             _state.ResetRuntimeState();
             _movement.ResetRuntimeState();
@@ -518,9 +501,6 @@ namespace Portfolio.Locomotion.Rigidbody
         {
             SetMovementInput(_playerHandler.ResolveMovementInput(
                 _state.ControlEnabled,
-                _movementFrozen,
-                _scriptedControlActive,
-                _scriptedMoveInput,
                 _gameInput));
         }
 
