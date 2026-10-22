@@ -370,7 +370,7 @@ GameObject:
   - component: {fileID: 1031733362}
   - component: {fileID: 1031733361}
   - component: {fileID: 1031733360}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Open SpriteShape Terrain
   m_TagString: Untagged
   m_Icon: {fileID: 0}
