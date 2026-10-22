@@ -26,9 +26,9 @@ namespace Portfolio.Locomotion.Rigidbody
             if (capsule == null || body == null || state == null || surfaceProbe == null || jump == null)
                 return false;
 
-            surfaceProbe.Probe(capsule, body, state, jump.ShouldIgnoreGrounding);
+            bool grounded = surfaceProbe.CheckGrounded(capsule, body, state, jump.ShouldIgnoreGrounding);
             jump.SetSteepSlopeJumpRestriction(surfaceProbe.IsSteepSlopeJumpRestricted);
-            return state.Grounded;
+            return grounded;
         }
 
         public void ApplyGravity(
