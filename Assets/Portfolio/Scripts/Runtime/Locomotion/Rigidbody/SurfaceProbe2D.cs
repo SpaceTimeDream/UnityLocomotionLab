@@ -28,8 +28,8 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private float _maximumWalkableSlopeAngle = 45f;
         [SerializeField] private float _steepSlopeJumpRestrictionAngle = 55f;
 
-        private readonly RaycastHit2D[] _hits = new RaycastHit2D[8];
-        private readonly ContactPoint2D[] _contacts = new ContactPoint2D[8];
+        private readonly RaycastHit2D[] _hits = new RaycastHit2D[32];
+        private readonly ContactPoint2D[] _contacts = new ContactPoint2D[32];
         private ContactFilter2D _contactFilter;
         private bool _initialized;
         private Collider2D _surfaceCollider;
@@ -43,6 +43,7 @@ namespace Portfolio.Locomotion.Rigidbody
         public string LastProbeResult => _lastProbeResult;
         public string LastProbeDetails => _lastProbeDetails;
         public float ProbeDistance => _probeDistance;
+        public LayerMask GroundLayers => _groundLayers;
         public float ProbeInset => _probeInset;
         public float GroundPointOriginOffset => _groundPointOriginOffset;
         public Transform GroundPoint => _groundPoint;
@@ -72,6 +73,13 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public void Initialize()
         {
+            int groundLayer = LayerMask.NameToLayer("Ground");
+
+            if (groundLayer >= 0)
+            {
+                _groundLayers |= 1 << groundLayer;
+            }
+
             _contactFilter = new ContactFilter2D();
             _contactFilter.SetLayerMask(_groundLayers);
             _contactFilter.useTriggers = false;
@@ -135,7 +143,10 @@ namespace Portfolio.Locomotion.Rigidbody
             Vector2 originLeft = new Vector2(bounds.min.x + _probeInset, originCenter.y);
             Vector2 originRight = new Vector2(bounds.max.x - _probeInset, originCenter.y);
 
-            _lastProbeDetails = string.Empty;
+            int groundLayer = LayerMask.NameToLayer("Ground");
+            _lastProbeDetails =
+                $"Ground layer index={groundLayer}, mask bits={_groundLayers.value}, " +
+                $"Ground included={groundLayer >= 0 && (_groundLayers.value & (1 << groundLayer)) != 0}. ";
             RaycastHit2D bestWalkableHit = default;
             RaycastHit2D bestSteepHit = default;
             CollectBestSupportHits(
@@ -401,10 +412,14 @@ namespace Portfolio.Locomotion.Rigidbody
                 }
 
                 float hitSlopeAngle = Vector2.Angle(hit.normal, Vector2.up);
-                _lastProbeDetails += $"Hit {i}: {hit.collider.name}, distance={hit.distance:F3}, normal={hit.normal}, angle={hitSlopeAngle:F1}, trigger={hit.collider.isTrigger}. ";
+                _lastProbeDetails +=
+                    $"Hit {i}: {hit.collider.name}, layer={LayerMask.LayerToName(hit.collider.gameObject.layer)} " +
+                    $"({hit.collider.gameObject.layer}), distance={hit.distance:F3}, normal={hit.normal}, " +
+                    $"angle={hitSlopeAngle:F1}, trigger={hit.collider.isTrigger}. ";
 
-                if (hit.collider == ignoredCollider || hit.collider.isTrigger || hit.normal.y <= 0f)
+                if (!IsValidCollider(hit.collider, ignoredCollider) || hit.normal.y <= 0f)
                 {
+                    _lastProbeDetails += $"Hit {i} rejected: self/same Rigidbody, trigger, or non-upward normal. ";
                     continue;
                 }
 
@@ -440,7 +455,10 @@ namespace Portfolio.Locomotion.Rigidbody
                 }
 
                 float hitSlopeAngle = Vector2.Angle(hit.normal, Vector2.up);
-                _lastProbeDetails += $"Cast hit {i}: {hit.collider.name}, distance={hit.distance:F3}, normal={hit.normal}, angle={hitSlopeAngle:F1}, trigger={hit.collider.isTrigger}. ";
+                _lastProbeDetails +=
+                    $"Cast hit {i}: {hit.collider.name}, layer={LayerMask.LayerToName(hit.collider.gameObject.layer)} " +
+                    $"({hit.collider.gameObject.layer}), distance={hit.distance:F3}, normal={hit.normal}, " +
+                    $"angle={hitSlopeAngle:F1}, trigger={hit.collider.isTrigger}. ";
 
                 if (hit.collider.isTrigger || hit.normal.y <= 0f)
                 {
