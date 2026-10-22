@@ -78,8 +78,6 @@ namespace Portfolio.Locomotion.Rigidbody
         {
             _scriptedMoveInput = Vector2.zero;
             _scriptedControlActive = false;
-            if (_movementFrozen)
-                _movementFrozen = false;
         }
     }
 }
