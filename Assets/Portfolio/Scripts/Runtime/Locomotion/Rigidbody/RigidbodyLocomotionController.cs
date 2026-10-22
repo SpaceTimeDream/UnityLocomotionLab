@@ -456,7 +456,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
             Vector2 previousPosition = _body.position;
             _movingPlatforms.ApplyPlatformMotion(_body, _jump.IsInJumpAscentState);
-            _playerPhysics.ProbeGround(_capsuleCollider, _body, _state, _surfaceProbe, _jump);
+            _playerPhysics.CheckGrounded(_capsuleCollider, _body, _state, _surfaceProbe, _jump);
             _playerJump.UpdateJumpState(_jump, _body, _state);
             _movingPlatforms.Track(_state, _surfaceProbe.SurfaceCollider, _body);
 
