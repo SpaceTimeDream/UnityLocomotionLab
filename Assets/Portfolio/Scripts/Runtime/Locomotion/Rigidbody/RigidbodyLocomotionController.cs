@@ -100,6 +100,7 @@ namespace Portfolio.Locomotion.Rigidbody
         public float VerticalVelocity => Velocity.y;
         public float HorizontalDistancePerFixedFrame => _horizontalDistancePerFixedFrame;
         public float SteepSlopeBlockDirection => _steepSlopeBlockDirection;
+        public string LastGroundAdhesionDecision => _lastGroundAdhesionDecision;
         public bool IsMovementFrozen => _movementFrozen;
         public bool IsScriptedControlActive => _scriptedControlActive;
 
