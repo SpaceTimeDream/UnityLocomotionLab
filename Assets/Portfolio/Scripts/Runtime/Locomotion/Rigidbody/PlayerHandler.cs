@@ -10,42 +10,76 @@ namespace Portfolio.Locomotion.Rigidbody
     [DisallowMultipleComponent]
     public sealed class PlayerHandler : MonoBehaviour
     {
+        private bool _movementFrozen;
+        private bool _scriptedControlActive;
+        private Vector2 _scriptedMoveInput;
+        private Vector2 _cachedPausedVelocity;
+        private float _cachedPausedGravityScale;
+
+        public bool IsMovementFrozen => _movementFrozen;
+        public bool IsScriptedControlActive => _scriptedControlActive;
+        public Vector2 ScriptedMoveInput => _scriptedMoveInput;
+
+        public void BeginScriptedControl()
+        {
+            _scriptedMoveInput = Vector2.zero;
+            _scriptedControlActive = true;
+        }
+
+        public void SetScriptedMoveInput(Vector2 input)
+        {
+            if (_scriptedControlActive)
+                _scriptedMoveInput = Vector2.ClampMagnitude(input, 1f);
+        }
+
+        public void EndScriptedControl()
+        {
+            _scriptedMoveInput = Vector2.zero;
+            _scriptedControlActive = false;
+        }
+
         public float ResolveMovementInput(
             bool controlEnabled,
-            bool movementFrozen,
-            bool scriptedControlActive,
-            Vector2 scriptedMoveInput,
             GameInput gameInput)
         {
-            if (!controlEnabled || movementFrozen)
+            if (!controlEnabled || _movementFrozen)
                 return 0f;
-            if (scriptedControlActive)
-                return Mathf.Clamp(scriptedMoveInput.x, -1f, 1f);
+            if (_scriptedControlActive)
+                return Mathf.Clamp(_scriptedMoveInput.x, -1f, 1f);
             if (gameInput == null)
                 return 0f;
 
             return Mathf.Clamp(gameInput.MovementValue.x, -1f, 1f);
         }
 
-        public void Freeze(UnityEngine.Rigidbody2D body, float gravityScale, out Vector2 cachedVelocity, out float cachedGravityScale)
+        public void Freeze(UnityEngine.Rigidbody2D body)
         {
-            cachedVelocity = body != null ? body.linearVelocity : Vector2.zero;
-            cachedGravityScale = gravityScale;
-
-            if (body == null)
+            if (_movementFrozen || body == null)
                 return;
 
+            _movementFrozen = true;
+            _cachedPausedVelocity = body.linearVelocity;
+            _cachedPausedGravityScale = body.gravityScale;
             body.linearVelocity = Vector2.zero;
             body.gravityScale = 0f;
         }
 
-        public void Unfreeze(UnityEngine.Rigidbody2D body, Vector2 cachedVelocity, float cachedGravityScale)
+        public void Unfreeze(UnityEngine.Rigidbody2D body)
         {
-            if (body == null)
+            if (!_movementFrozen || body == null)
                 return;
 
-            body.linearVelocity = cachedVelocity;
-            body.gravityScale = cachedGravityScale;
+            _movementFrozen = false;
+            body.linearVelocity = _cachedPausedVelocity;
+            body.gravityScale = _cachedPausedGravityScale;
+        }
+
+        public void ResetRuntimeState()
+        {
+            _scriptedMoveInput = Vector2.zero;
+            _scriptedControlActive = false;
+            if (_movementFrozen)
+                _movementFrozen = false;
         }
     }
 }
