@@ -36,6 +36,14 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private Transform _visualRoot;
         [SerializeField] private GameInput _gameInput;
 
+        [Header("PLAYER COMPONENTS")]
+        [SerializeField] private PlayerController _playerController;
+        [SerializeField] private PlayerHandler _playerHandler;
+        [SerializeField] private PlayerJump _playerJump;
+        [SerializeField] private PlayerMovement _playerMovement;
+        [SerializeField] private PlayerPhysics _playerPhysics;
+        [SerializeField] private PlayerStatus _playerStatus;
+
         [Header("MODULES")]
         [SerializeField] private LocomotionState _state = new LocomotionState();
         [SerializeField] private RigidbodyMovement _movement = new RigidbodyMovement();
@@ -93,6 +101,12 @@ namespace Portfolio.Locomotion.Rigidbody
         public SurfaceProbe2D SurfaceProbe => _surfaceProbe;
         public ExternalForceReceiver2D ExternalForces => _externalForces;
         public MovingPlatformTracker2D MovingPlatforms => _movingPlatforms;
+        public PlayerController PlayerController => _playerController;
+        public PlayerHandler PlayerHandler => _playerHandler;
+        public PlayerJump PlayerJump => _playerJump;
+        public PlayerMovement PlayerMovement => _playerMovement;
+        public PlayerPhysics PlayerPhysics => _playerPhysics;
+        public PlayerStatus PlayerStatus => _playerStatus;
         public float MovementInput => _movementInput;
         public float FacingDirection => _facingDirection;
         public Vector2 Velocity => _body != null ? _body.linearVelocity : Vector2.zero;
@@ -187,7 +201,43 @@ namespace Portfolio.Locomotion.Rigidbody
                 _gameInput = GameInput.Instance;
             }
 
+            InitializePlayerComponents();
+            _playerStatus.Initialize(_state);
+            _state = _playerStatus.State;
             _surfaceProbe.Initialize();
+        }
+
+        private void InitializePlayerComponents()
+        {
+            if (_playerController == null)
+                _playerController = GetComponent<PlayerController>();
+            if (_playerController == null)
+                _playerController = gameObject.AddComponent<PlayerController>();
+
+            if (_playerHandler == null)
+                _playerHandler = GetComponent<PlayerHandler>();
+            if (_playerHandler == null)
+                _playerHandler = gameObject.AddComponent<PlayerHandler>();
+
+            if (_playerJump == null)
+                _playerJump = GetComponent<PlayerJump>();
+            if (_playerJump == null)
+                _playerJump = gameObject.AddComponent<PlayerJump>();
+
+            if (_playerMovement == null)
+                _playerMovement = GetComponent<PlayerMovement>();
+            if (_playerMovement == null)
+                _playerMovement = gameObject.AddComponent<PlayerMovement>();
+
+            if (_playerPhysics == null)
+                _playerPhysics = GetComponent<PlayerPhysics>();
+            if (_playerPhysics == null)
+                _playerPhysics = gameObject.AddComponent<PlayerPhysics>();
+
+            if (_playerStatus == null)
+                _playerStatus = GetComponent<PlayerStatus>();
+            if (_playerStatus == null)
+                _playerStatus = gameObject.AddComponent<PlayerStatus>();
         }
 
         private void InitializeComponents()
@@ -282,14 +332,14 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public void RequestJump()
         {
-            _jump.RequestJump();
+            _playerJump.RequestJump(_jump);
         }
 
         public void ReleaseJump()
         {
             if (_body != null)
             {
-                _jump.ReleaseJump(_body);
+                _playerJump.ReleaseJump(_jump, _body);
             }
         }
 
@@ -312,10 +362,7 @@ namespace Portfolio.Locomotion.Rigidbody
             }
 
             _movementFrozen = true;
-            _cachedPausedVelocity = _body.linearVelocity;
-            _cachedPausedGravityScale = _body.gravityScale;
-            _body.linearVelocity = Vector2.zero;
-            _body.gravityScale = 0f;
+            _playerHandler.Freeze(_body, _body.gravityScale, out _cachedPausedVelocity, out _cachedPausedGravityScale);
             SetMovementInput(0f);
         }
 
@@ -327,8 +374,7 @@ namespace Portfolio.Locomotion.Rigidbody
             }
 
             _movementFrozen = false;
-            _body.linearVelocity = _cachedPausedVelocity;
-            _body.gravityScale = _cachedPausedGravityScale;
+            _playerHandler.Unfreeze(_body, _cachedPausedVelocity, _cachedPausedGravityScale);
         }
 
         public void ZeroVelocity()
@@ -408,9 +454,8 @@ namespace Portfolio.Locomotion.Rigidbody
 
             Vector2 previousPosition = _body.position;
             _movingPlatforms.ApplyPlatformMotion(_body, _jump.IsInJumpAscentState);
-            _surfaceProbe.Probe(_capsuleCollider, _body, _state, _jump.ShouldIgnoreGrounding);
-            _jump.SetSteepSlopeJumpRestriction(_surfaceProbe.IsSteepSlopeJumpRestricted);
-            _jump.UpdateRuntimeState(_body, _state);
+            _playerPhysics.ProbeGround(_capsuleCollider, _body, _state, _surfaceProbe, _jump);
+            _playerJump.UpdateJumpState(_jump, _body, _state);
             _movingPlatforms.Track(_state, _surfaceProbe.SurfaceCollider, _body);
 
             _steepSlopeBlockDirection = GetSteepSlopeBlockDirection();
@@ -424,7 +469,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 _steepSlopeBlockDirection,
                 _jump.IsInJumpAscentState);
 
-            if (_jump.ApplyJump(_body, _state, _steepSlopeBlockDirection))
+            if (_playerJump.TryApplyJump(_jump, _body, _state, _steepSlopeBlockDirection))
             {
                 JumpTriggered?.Invoke();
             }
@@ -469,42 +514,21 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void UpdateMoveInput()
         {
-            if (!_state.ControlEnabled || _movementFrozen)
-            {
-                SetMovementInput(0f);
-                return;
-            }
-
-            if (_scriptedControlActive)
-            {
-                SetMovementInput(_scriptedMoveInput.x);
-                return;
-            }
-
-            if (_gameInput == null)
-            {
-                SetMovementInput(0f);
-                return;
-            }
-
-            SetMovementInput(_gameInput.MovementValue.x);
+            SetMovementInput(_playerHandler.ResolveMovementInput(
+                _state.ControlEnabled,
+                _movementFrozen,
+                _scriptedControlActive,
+                _scriptedMoveInput,
+                _gameInput));
         }
 
         private void UpdateFacingDirection()
         {
-            float direction = _movementInput;
+            float direction = _playerMovement.ResolveFacingDirection(
+                _movementInput, _body, _externalForces, _facingDirection);
 
-            if (_externalForces.IsControlProtected && Mathf.Abs(_body.linearVelocity.x) > 0.01f)
-            {
-                direction = _body.linearVelocity.x;
-            }
-
-            if (Mathf.Abs(direction) <= 0.01f)
-            {
-                return;
-            }
-
-            SetFacingDirection(Mathf.Sign(direction));
+            if (!Mathf.Approximately(direction, _facingDirection))
+                SetFacingDirection(direction);
         }
 
         private void SetFacingDirection(float direction)
@@ -535,125 +559,35 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private float GetSteepSlopeBlockDirection()
         {
-            float inputDirection = GetDirection(_movementInput);
-
-            if (HasNearbySteepSlope(inputDirection))
-            {
-                return inputDirection;
-            }
-
-            float velocityDirection = GetDirection(_body.linearVelocity.x);
-
-            if (!Mathf.Approximately(velocityDirection, inputDirection) &&
-                HasNearbySteepSlope(velocityDirection))
-            {
-                return velocityDirection;
-            }
-
-            if (Mathf.Approximately(inputDirection, 0f) &&
-                Mathf.Approximately(velocityDirection, 0f) &&
-                HasNearbySteepSlope(_facingDirection))
-            {
-                return _facingDirection;
-            }
-
-            return 0f;
-        }
-
-        private bool HasNearbySteepSlope(float direction)
-        {
-            if (Mathf.Approximately(direction, 0f))
-            {
-                return false;
-            }
-
-            return _surfaceProbe.HasNearbySteepSlope(
+            return _playerMovement.ResolveSteepSlopeBlockDirection(
+                _movementInput,
+                _facingDirection,
+                _body,
                 _capsuleCollider,
-                direction,
+                _surfaceProbe,
                 _steepSlopeJumpCheckDistance);
-        }
-
-        private float GetDirection(float value)
-        {
-            return Mathf.Abs(value) > 0.01f ? Mathf.Sign(value) : 0f;
         }
 
         private void ApplyGravity()
         {
-            float multiplier = _body.linearVelocity.y > 0f
-                ? _jumpAscentGravityMultiplier
-                : _fallGravityMultiplier;
-            _body.gravityScale = _gravityScale * multiplier;
-
-            if (_body.linearVelocity.y >= -_maximumFallSpeed)
-            {
-                return;
-            }
-
-            Vector2 velocity = _body.linearVelocity;
-            velocity.y = -_maximumFallSpeed;
-            _body.linearVelocity = velocity;
+            _playerPhysics.ApplyGravity(
+                _body,
+                _gravityScale,
+                _jumpAscentGravityMultiplier,
+                _fallGravityMultiplier,
+                _maximumFallSpeed);
         }
 
         private void ApplyGroundAdhesion()
         {
-            _lastGroundAdhesionApplied = false;
-
-            if (_groundAdhesionForce <= 0f)
-            {
-                _lastGroundAdhesionDecision = "Skipped: force is zero";
-                return;
-            }
-
-            if (!_state.Grounded)
-            {
-                _lastGroundAdhesionDecision = "Skipped: not grounded";
-                return;
-            }
-
-            if (!_surfaceProbe.HasDirectSurface)
-            {
-                _lastGroundAdhesionDecision = "Skipped: no direct surface (grace grounding only)";
-                return;
-            }
-
-            if (_jump.IsInJumpAscentState)
-            {
-                _lastGroundAdhesionDecision = "Skipped: jump ascent";
-                return;
-            }
-
-            if (_externalForces.HasExternalForce)
-            {
-                _lastGroundAdhesionDecision = "Skipped: external force active";
-                return;
-            }
-
-            Vector2 surfaceNormal = _surfaceProbe.SurfaceNormal.normalized;
-            float normalVelocity = Vector2.Dot(_body.linearVelocity, surfaceNormal);
-            float slopeAngle = Vector2.Angle(surfaceNormal, Vector2.up);
-
-            if (surfaceNormal.y <= 0f)
-            {
-                _lastGroundAdhesionDecision = "Skipped: surface normal is not upward";
-                return;
-            }
-
-            if (slopeAngle > _surfaceProbe.MaximumWalkableSlopeAngle)
-            {
-                _lastGroundAdhesionDecision = "Skipped: slope exceeds walkable angle";
-                return;
-            }
-
-            if (normalVelocity > 0.1f)
-            {
-                _lastGroundAdhesionDecision = "Skipped: moving away from surface";
-                return;
-            }
-
-            _body.AddForce(-surfaceNormal * _groundAdhesionForce, ForceMode2D.Force);
-            _lastGroundAdhesionApplied = true;
-            _lastGroundAdhesionDecision = "Applied";
+            _lastGroundAdhesionDecision = _playerPhysics.GetGroundAdhesionDecision(
+                _body,
+                _state,
+                _surfaceProbe,
+                _jump,
+                _externalForces,
+                _groundAdhesionForce,
+                out _lastGroundAdhesionApplied);
         }
 
         private void RecordGroundAdhesionLog()
