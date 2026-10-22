@@ -806,6 +806,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 $"Position: {_body.position}, Collider Bounds Center: {bounds.center}, Size: {bounds.size}\n" +
                 $"Grounded: {_state.Grounded}, Direct Surface: {_surfaceProbe.HasDirectSurface}, Surface: {surfaceName}\n" +
                 $"Probe Result: {_surfaceProbe.LastProbeResult}\n" +
+                $"Probe Details: {_surfaceProbe.LastProbeDetails}\n" +
                 $"Surface Normal: {normal}, Slope Angle: {Vector2.Angle(normal, Vector2.up):F2}, Velocity Along Normal: {normalVelocity:F3}\n" +
                 $"Velocity: {velocity}, Movement Input: {_movementInput}, Horizontal Distance / Fixed Frame: {_horizontalDistancePerFixedFrame:F4}\n" +
                 $"Probe Distance: {_surfaceProbe.ProbeDistance:F3}, Probe Inset: {_surfaceProbe.ProbeInset:F3}, Ground Point: {(_surfaceProbe.GroundPoint != null ? _surfaceProbe.GroundPoint.position.ToString() : "Not assigned")}\n" +
