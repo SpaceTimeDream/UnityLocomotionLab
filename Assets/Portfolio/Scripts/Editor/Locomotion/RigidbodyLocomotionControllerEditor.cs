@@ -362,6 +362,9 @@ public class RigidbodyLocomotionControllerEditor : Editor
                         EditorGUILayout.TextField(
                             "Probe Result",
                             _controller.SurfaceProbe.LastProbeResult);
+                        EditorGUILayout.TextArea(
+                            _controller.SurfaceProbe.LastProbeDetails,
+                            GUILayout.MinHeight(42f));
                         EditorGUILayout.TextField(
                             "Surface Collider",
                             _controller.SurfaceProbe.SurfaceCollider != null
