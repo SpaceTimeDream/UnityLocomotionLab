@@ -44,6 +44,10 @@ public class RigidbodyLocomotionControllerEditor : Editor
     private SerializedProperty _groundAdhesionLogIntervalProp;
     private SerializedProperty _groundAdhesionLogPathProp;
     private SerializedProperty _groundAdhesionLogErrorProp;
+    private SerializedProperty _debugGroundingProp;
+    private SerializedProperty _pauseOnAirborneProp;
+    private SerializedProperty _drawGroundingGizmosProp;
+    private SerializedProperty _groundingDebugLogIntervalProp;
     private SerializedProperty _flipVisualWithFacingProp;
 
     //------------------------------- Internal Editors -------------------------------//
@@ -102,6 +106,7 @@ public class RigidbodyLocomotionControllerEditor : Editor
         DrawJump();
         DrawPhysics();
         DrawExternalForces();
+        DrawGroundingDebug();
         DrawDebugging();
 
         serializedObject.ApplyModifiedProperties();
@@ -133,6 +138,10 @@ public class RigidbodyLocomotionControllerEditor : Editor
         _groundAdhesionLogIntervalProp = serializedObject.FindProperty("_groundAdhesionLogInterval");
         _groundAdhesionLogPathProp = serializedObject.FindProperty("_groundAdhesionLogPath");
         _groundAdhesionLogErrorProp = serializedObject.FindProperty("_groundAdhesionLogError");
+        _debugGroundingProp = serializedObject.FindProperty("_debugGrounding");
+        _pauseOnAirborneProp = serializedObject.FindProperty("_pauseOnAirborne");
+        _drawGroundingGizmosProp = serializedObject.FindProperty("_drawGroundingGizmos");
+        _groundingDebugLogIntervalProp = serializedObject.FindProperty("_groundingDebugLogInterval");
         _flipVisualWithFacingProp = serializedObject.FindProperty("_flipVisualWithFacing");
     }
 
@@ -157,6 +166,7 @@ public class RigidbodyLocomotionControllerEditor : Editor
         EnsureFoldout(JumpFoldoutKey, true);
         EnsureFoldout(PhysicsFoldoutKey, false);
         EnsureFoldout("Ground Adhesion", true);
+        EnsureFoldout("Grounding Debug", true);
         EnsureFoldout(ExternalForcesFoldoutKey, false);
         EnsureFoldout(DebuggingFoldoutKey, false);
     }
@@ -327,6 +337,24 @@ public class RigidbodyLocomotionControllerEditor : Editor
                     DrawProperty(_groundAdhesionLogPathProp);
                     DrawProperty(_groundAdhesionLogErrorProp);
                 }
+            });
+    }
+
+    private void DrawGroundingDebug()
+    {
+        DrawFoldoutSection(
+            "Grounding Debug",
+            () =>
+            {
+                DrawProperty(_debugGroundingProp);
+                DrawProperty(_pauseOnAirborneProp);
+                DrawProperty(_drawGroundingGizmosProp);
+                DrawProperty(_groundingDebugLogIntervalProp);
+                EditorGUILayout.HelpBox(
+                    "Pause On Airborne calls Debug.Break in the Unity Editor when the controller reports not grounded. " +
+                    "The Console log includes the probe result, collider, velocity, normal, jump state, and adhesion decision. " +
+                    "Grounding gizmos are drawn when the player is selected.",
+                    MessageType.Info);
             });
     }
 
