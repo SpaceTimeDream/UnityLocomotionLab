@@ -37,7 +37,6 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private GameInput _gameInput;
 
         [Header("PLAYER COMPONENTS")]
-        [SerializeField] private PlayerController _playerController;
         [SerializeField] private PlayerHandler _playerHandler;
         [SerializeField] private PlayerJump _playerJump;
         [SerializeField] private PlayerMovement _playerMovement;
@@ -99,7 +98,6 @@ namespace Portfolio.Locomotion.Rigidbody
         public SurfaceProbe2D SurfaceProbe => _surfaceProbe;
         public ExternalForceReceiver2D ExternalForces => _externalForces;
         public MovingPlatformTracker2D MovingPlatforms => _movingPlatforms;
-        public PlayerController PlayerController => _playerController;
         public PlayerHandler PlayerHandler => _playerHandler;
         public PlayerJump PlayerJump => _playerJump;
         public PlayerMovement PlayerMovement => _playerMovement;
@@ -199,6 +197,7 @@ namespace Portfolio.Locomotion.Rigidbody
             }
 
             InitializePlayerComponents();
+            if (_playerStatus == null) _playerStatus = new PlayerStatus(_state);
             _playerStatus.Initialize(_state);
             _state = _playerStatus.State;
             _surfaceProbe.Initialize();
@@ -206,11 +205,6 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void InitializePlayerComponents()
         {
-            if (_playerController == null)
-                _playerController = GetComponent<PlayerController>();
-            if (_playerController == null)
-                _playerController = gameObject.AddComponent<PlayerController>();
-
             if (_playerHandler == null)
                 _playerHandler = GetComponent<PlayerHandler>();
             if (_playerHandler == null)
@@ -232,11 +226,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 _playerPhysics = gameObject.AddComponent<PlayerPhysics>();
 
             if (_playerStatus == null)
-                _playerStatus = GetComponent<PlayerStatus>();
-            if (_playerStatus == null)
-                _playerStatus = gameObject.AddComponent<PlayerStatus>();
-
-            _playerController.RefreshComponents();
+                _playerStatus = new PlayerStatus(_state);
         }
 
         private void InitializeComponents()
