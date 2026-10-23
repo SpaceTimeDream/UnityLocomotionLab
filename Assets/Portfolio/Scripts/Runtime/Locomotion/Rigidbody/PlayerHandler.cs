@@ -1,4 +1,6 @@
 using Portfolio.Input;
+using Portfolio.Locomotion.Core;
+using System;
 using UnityEngine;
 
 namespace Portfolio.Locomotion.Rigidbody
@@ -16,9 +18,57 @@ namespace Portfolio.Locomotion.Rigidbody
         private Vector2 _cachedPausedVelocity;
         private float _cachedPausedGravityScale;
 
+        private LocomotionState _state;
+        private LocomotionPhysicsState _lastState;
+
+        public event Action<LocomotionPhysicsState> StateTransitioned;
+        public event Action<bool> WalkingChanged;
+        public event Action<bool> JumpingChanged;
+        public event Action<bool> FallingChanged;
+        public event Action<bool> RisingChanged;
+        public event Action<bool> SlidingChanged;
+        public event Action JumpSoundRequested;
+
         public bool IsMovementFrozen => _movementFrozen;
         public bool IsScriptedControlActive => _scriptedControlActive;
         public Vector2 ScriptedMoveInput => _scriptedMoveInput;
+
+        public void Initialize(LocomotionState state)
+        {
+            if (ReferenceEquals(_state, state))
+                return;
+
+            if (_state != null)
+                _state.StateChanged -= HandleStateChanged;
+
+            _state = state;
+            _lastState = _state != null ? _state.CurrentState : LocomotionPhysicsState.None;
+
+            if (_state != null)
+                _state.StateChanged += HandleStateChanged;
+        }
+
+        private void HandleStateChanged(LocomotionPhysicsState nextState)
+        {
+            LocomotionPhysicsState previousState = _lastState;
+            _lastState = nextState;
+
+            StateTransitioned?.Invoke(nextState);
+            WalkingChanged?.Invoke(HasState(nextState, LocomotionPhysicsState.Walking));
+            JumpingChanged?.Invoke(HasState(nextState, LocomotionPhysicsState.Jumping));
+            FallingChanged?.Invoke(HasState(nextState, LocomotionPhysicsState.Falling));
+            RisingChanged?.Invoke(HasState(nextState, LocomotionPhysicsState.Rising));
+            SlidingChanged?.Invoke(HasState(nextState, LocomotionPhysicsState.Sliding));
+
+            if (!HasState(previousState, LocomotionPhysicsState.Jumping) &&
+                HasState(nextState, LocomotionPhysicsState.Jumping))
+                JumpSoundRequested?.Invoke();
+        }
+
+        private static bool HasState(LocomotionPhysicsState state, LocomotionPhysicsState flag)
+        {
+            return (state & flag) == flag;
+        }
 
         public void BeginScriptedControl()
         {
@@ -72,6 +122,17 @@ namespace Portfolio.Locomotion.Rigidbody
             _movementFrozen = false;
             body.linearVelocity = _cachedPausedVelocity;
             body.gravityScale = _cachedPausedGravityScale;
+        }
+
+        public void NotifyJumpTriggered()
+        {
+            JumpSoundRequested?.Invoke();
+        }
+
+        private void OnDestroy()
+        {
+            if (_state != null)
+                _state.StateChanged -= HandleStateChanged;
         }
 
         public void ResetRuntimeState()
