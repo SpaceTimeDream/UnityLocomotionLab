@@ -92,10 +92,12 @@ namespace Portfolio.Locomotion.Rigidbody
             bool controlEnabled,
             GameInput gameInput)
         {
-            if (!controlEnabled || _movementFrozen)
+            if (_movementFrozen)
                 return 0f;
             if (_scriptedControlActive)
                 return Mathf.Clamp(_scriptedMoveInput.x, -1f, 1f);
+            if (!controlEnabled)
+                return 0f;
             if (gameInput == null)
                 return 0f;
 
