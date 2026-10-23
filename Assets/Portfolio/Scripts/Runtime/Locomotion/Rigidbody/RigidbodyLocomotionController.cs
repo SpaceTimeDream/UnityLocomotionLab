@@ -154,7 +154,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void FixedUpdate()
         {
-            FixedUpdateLoop();
+            HandlePhysicsInteractions();
         }
 
         private void OnDisable()
@@ -412,16 +412,24 @@ namespace Portfolio.Locomotion.Rigidbody
         private void UpdateLoop()
         {
             if (!_initialized)
-            {
                 return;
-            }
 
             RefreshGameInput();
+            UpdateParameters();
+            UpdateModules();
+        }
+
+        private void UpdateParameters()
+        {
             UpdateMoveInput();
+        }
+
+        private void UpdateModules()
+        {
             UpdateFacingDirection();
         }
 
-        private void FixedUpdateLoop()
+        private void HandlePhysicsInteractions()
         {
             if (!_initialized || _movementFrozen)
             {
@@ -447,7 +455,6 @@ namespace Portfolio.Locomotion.Rigidbody
 
             if (_playerJump.TryApplyJump(_jump, _body, _state, _steepSlopeBlockDirection))
             {
-                _playerHandler.NotifyJumpTriggered();
                 JumpTriggered?.Invoke();
             }
 
