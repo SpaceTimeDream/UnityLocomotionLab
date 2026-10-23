@@ -1,16 +1,15 @@
 using Portfolio.Locomotion.Core;
-using UnityEngine;
 
 namespace Portfolio.Locomotion.Rigidbody
 {
     /// <summary>
-    /// Per-player status component. Owns the runtime LocomotionState reference used by
-    /// this Rigidbody player; deliberately avoids static/global status.
+    /// Runtime locomotion status data. This is deliberately not a MonoBehaviour;
+    /// the controller owns it and the custom Inspector reads it through the controller.
     /// </summary>
-    [DisallowMultipleComponent]
-    public sealed class PlayerStatus : MonoBehaviour
+    [System.Serializable]
+    public sealed class PlayerStatus
     {
-        [SerializeField] private LocomotionState _state = new LocomotionState();
+        private LocomotionState _state;
 
         public LocomotionState State => _state;
         public bool IsGrounded => _state != null && _state.Grounded;
@@ -18,27 +17,23 @@ namespace Portfolio.Locomotion.Rigidbody
         public bool IsFalling => _state != null && _state.Falling;
         public bool IsOnWalkableSlope => _state != null && _state.OnWalkableSlope;
         public bool IsOnSteepSlope => _state != null && _state.OnSteepSlope;
+        public bool IsWalking => _state != null && _state.IsWalking;
+        public bool IsJumping => _state != null && _state.IsJumping;
+
+        public PlayerStatus(LocomotionState state)
+        {
+            _state = state ?? new LocomotionState();
+        }
 
         public void Initialize(LocomotionState existingState)
         {
-            // Preserve serialized state data from existing RigidbodyLocomotionController scenes.
             if (existingState != null)
                 _state = existingState;
-
-            if (_state == null)
+            else if (_state == null)
                 _state = new LocomotionState();
         }
 
-        public void SetControlEnabled(bool enabled)
-        {
-            if (_state != null)
-                _state.SetControlEnabled(enabled);
-        }
-
-        public void ResetRuntimeState()
-        {
-            if (_state != null)
-                _state.ResetRuntimeState();
-        }
+        public void SetControlEnabled(bool enabled) => _state?.SetControlEnabled(enabled);
+        public void ResetRuntimeState() => _state?.ResetRuntimeState();
     }
 }
