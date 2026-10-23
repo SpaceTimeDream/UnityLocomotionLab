@@ -42,7 +42,7 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private PlayerJump _playerJump;
         [SerializeField] private PlayerMovement _playerMovement;
         [SerializeField] private PlayerPhysics _playerPhysics;
-        [SerializeField] private PlayerStatus _playerStatus;
+        private PlayerStatus _playerStatus;
 
         [Header("MODULES")]
         [SerializeField] private LocomotionState _state = new LocomotionState();
