@@ -200,6 +200,7 @@ namespace Portfolio.Locomotion.Rigidbody
             if (_playerStatus == null) _playerStatus = new PlayerStatus(_state);
             _playerStatus.Initialize(_state);
             _state = _playerStatus.State;
+            _playerHandler.Initialize(_state);
             _surfaceProbe.Initialize();
         }
 
@@ -446,6 +447,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
             if (_playerJump.TryApplyJump(_jump, _body, _state, _steepSlopeBlockDirection))
             {
+                _playerHandler.NotifyJumpTriggered();
                 JumpTriggered?.Invoke();
             }
 
