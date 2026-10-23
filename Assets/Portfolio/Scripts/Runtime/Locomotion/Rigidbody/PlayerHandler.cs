@@ -54,15 +54,28 @@ namespace Portfolio.Locomotion.Rigidbody
             _lastState = nextState;
 
             StateTransitioned?.Invoke(nextState);
-            WalkingChanged?.Invoke(HasState(nextState, LocomotionPhysicsState.Walking));
-            JumpingChanged?.Invoke(HasState(nextState, LocomotionPhysicsState.Jumping));
-            FallingChanged?.Invoke(HasState(nextState, LocomotionPhysicsState.Falling));
-            RisingChanged?.Invoke(HasState(nextState, LocomotionPhysicsState.Rising));
-            SlidingChanged?.Invoke(HasState(nextState, LocomotionPhysicsState.Sliding));
+
+            NotifyFlagChanged(previousState, nextState, LocomotionPhysicsState.Walking, WalkingChanged);
+            NotifyFlagChanged(previousState, nextState, LocomotionPhysicsState.Jumping, JumpingChanged);
+            NotifyFlagChanged(previousState, nextState, LocomotionPhysicsState.Falling, FallingChanged);
+            NotifyFlagChanged(previousState, nextState, LocomotionPhysicsState.Rising, RisingChanged);
+            NotifyFlagChanged(previousState, nextState, LocomotionPhysicsState.Sliding, SlidingChanged);
 
             if (!HasState(previousState, LocomotionPhysicsState.Jumping) &&
                 HasState(nextState, LocomotionPhysicsState.Jumping))
                 JumpSoundRequested?.Invoke();
+        }
+
+        private static void NotifyFlagChanged(
+            LocomotionPhysicsState previousState,
+            LocomotionPhysicsState nextState,
+            LocomotionPhysicsState flag,
+            Action<bool> callback)
+        {
+            bool wasActive = HasState(previousState, flag);
+            bool isActive = HasState(nextState, flag);
+            if (wasActive != isActive)
+                callback?.Invoke(isActive);
         }
 
         private static bool HasState(LocomotionPhysicsState state, LocomotionPhysicsState flag)
