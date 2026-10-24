@@ -11,6 +11,13 @@ namespace Portfolio.Locomotion.Rigidbody
     [DisallowMultipleComponent]
     public sealed class PlayerPhysics : MonoBehaviour
     {
+        private PlayerController _controller;
+
+        public void Initialize(PlayerController controller) => _controller = controller;
+
+        public void ApplyPlatformDelta() => _controller?.StageApplyPlatformDelta();
+        public void UpdatePhysics() => _controller?.StageUpdatePhysics();
+        public void FinalizePlatformSync() => _controller?.StageFinalizePlatformSync();
         /// <summary>
         /// Performs the ground check and returns the accepted grounded state.
         /// SurfaceProbe2D performs the filtered Ground-layer contacts/raycasts/capsule cast
