@@ -7,11 +7,15 @@ namespace Portfolio.Locomotion.Rigidbody
 {
     /// <summary>
     /// Handles player-control input selection and pause/freeze mechanics. Public control
-    /// methods on RigidbodyLocomotionController remain as compatibility entry points.
+    /// methods on PlayerController provide the locomotion entry points.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class PlayerHandler : MonoBehaviour
     {
+        public static PlayerHandler Instance { get; private set; }
+        public static event Action<bool> OnPlayerDisabledStateChanged;
+        public static bool IsPlayerDisabled => Instance == null || Instance._state == null || !Instance._state.ControlEnabled || Instance._movementFrozen;
+
         private bool _movementFrozen;
         private bool _scriptedControlActive;
         private Vector2 _scriptedMoveInput;
@@ -32,6 +36,16 @@ namespace Portfolio.Locomotion.Rigidbody
         public bool IsMovementFrozen => _movementFrozen;
         public bool IsScriptedControlActive => _scriptedControlActive;
         public Vector2 ScriptedMoveInput => _scriptedMoveInput;
+
+        private void Awake()
+        {
+            if (Instance != null && Instance != this)
+            {
+                Debug.LogWarning("Multiple PlayerHandler components found; keeping the existing singleton.", this);
+                return;
+            }
+            Instance = this;
+        }
 
         public void Initialize(LocomotionState state)
         {
@@ -54,6 +68,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _lastState = nextState;
 
             StateTransitioned?.Invoke(nextState);
+            OnPlayerDisabledStateChanged?.Invoke(IsPlayerDisabled);
 
             NotifyFlagChanged(previousState, nextState, LocomotionPhysicsState.Walking, WalkingChanged);
             NotifyFlagChanged(previousState, nextState, LocomotionPhysicsState.Jumping, JumpingChanged);
@@ -123,6 +138,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 return;
 
             _movementFrozen = true;
+            OnPlayerDisabledStateChanged?.Invoke(true);
             _cachedPausedVelocity = body.linearVelocity;
             _cachedPausedGravityScale = body.gravityScale;
             body.linearVelocity = Vector2.zero;
@@ -135,6 +151,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 return;
 
             _movementFrozen = false;
+            OnPlayerDisabledStateChanged?.Invoke(IsPlayerDisabled);
             body.linearVelocity = _cachedPausedVelocity;
             body.gravityScale = _cachedPausedGravityScale;
         }
@@ -146,6 +163,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void OnDestroy()
         {
+            if (Instance == this) Instance = null;
             if (_state != null)
                 _state.StateChanged -= HandleStateChanged;
         }
