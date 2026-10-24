@@ -1,39 +1,175 @@
-using Portfolio.Locomotion.Core;
+using System;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace Portfolio.Locomotion.Rigidbody
 {
     /// <summary>
-    /// Runtime locomotion status data. This is deliberately not a MonoBehaviour;
-    /// the controller owns it and the custom Inspector reads it through the controller.
+    /// Global player status and mode flags. Physics measurements and detailed locomotion
+    /// transitions remain owned by LocomotionState.
     /// </summary>
-    [System.Serializable]
-    public sealed class PlayerStatus
+    public static class PlayerStatus
     {
-        private LocomotionState _state;
+        public enum Status { Normal, Dead, Respawning, Disabled, Resetting }
 
-        public LocomotionState State => _state;
-        public bool IsGrounded => _state != null && _state.Grounded;
-        public bool IsRising => _state != null && _state.Rising;
-        public bool IsFalling => _state != null && _state.Falling;
-        public bool IsOnWalkableSlope => _state != null && _state.OnWalkableSlope;
-        public bool IsOnSteepSlope => _state != null && _state.OnSteepSlope;
-        public bool IsWalking => _state != null && _state.IsWalking;
-        public bool IsJumping => _state != null && _state.IsJumping;
-
-        public PlayerStatus(LocomotionState state)
+        [Flags]
+        public enum Mode
         {
-            _state = state ?? new LocomotionState();
+            None = 0, Normal = 1 << 0, NoClip = 1 << 1, NoGravity = 1 << 2,
+            BulletTime = 1 << 3, Refracted = 1 << 4, Held = 1 << 5,
+            Melted = 1 << 6, Cutscene = 1 << 7, FloatingArea = 1 << 8, Dialogue = 1 << 9
         }
 
-        public void Initialize(LocomotionState existingState)
+        [Flags]
+        public enum PhysicsState
         {
-            if (existingState != null)
-                _state = existingState;
-            else if (_state == null)
-                _state = new LocomotionState();
+            None = 0, Idle = 1 << 0, Moving = 1 << 1, Walking = 1 << 2,
+            Jumping = 1 << 3, FloatingUp = 1 << 4, Falling = 1 << 5,
+            Sliding = 1 << 6, Pushed = 1 << 7, OnSlope = 1 << 8,
+            OnSteepSlope = 1 << 9, Turning = 1 << 10, RefractedMoving = 1 << 11
         }
 
-        public void SetControlEnabled(bool enabled) => _state?.SetControlEnabled(enabled);
-        public void ResetRuntimeState() => _state?.ResetRuntimeState();
+        public enum EquippedItem { None, MirrorItem, Suncatcher }
+
+        public static event Action<bool> OnBusyStateChanged;
+        public static event Action<Status> OnStatusChanged;
+        public static event Action<Mode> OnModeChanged;
+        public static event Action<Mode, Mode> OnModeRemoved;
+        public static event Action<EquippedItem> OnEquipmentChanged;
+        public static event Action<PhysicsState> OnStateChanged;
+
+        private static Status _status = Status.Normal;
+        private static Mode _mode = Mode.Normal;
+        private static EquippedItem _item = EquippedItem.None;
+        private static PhysicsState _state = PhysicsState.Idle;
+        private static bool _isBusy;
+        private static int _statusTransitionCount;
+        private static int _stateTransitionCount;
+        private static int _modeTransitionCount;
+        private static int _blockedMutationCount;
+        private static readonly List<string> RecentEvents = new List<string>();
+        private const int MaximumRecentEvents = 12;
+
+        public static Status CurrentStatus => _status;
+        public static Mode CurrentMode => _mode;
+        public static EquippedItem CurrentEquippedItem => _item;
+        public static PhysicsState CurrentState => _state;
+        public static bool IsBusy
+        {
+            get => _isBusy;
+            set
+            {
+                if (IsTerminalStatus(_status)) { _blockedMutationCount++; return; }
+                if (_isBusy == value) return;
+                _isBusy = value;
+                OnBusyStateChanged?.Invoke(value);
+            }
+        }
+
+        public static int StatusTransitionCount => _statusTransitionCount;
+        public static int StateTransitionCount => _stateTransitionCount;
+        public static int ModeTransitionCount => _modeTransitionCount;
+        public static int BlockedMutationCount => _blockedMutationCount;
+        public static string RecentDebugEvents => string.Join("\n", RecentEvents);
+        public static bool IsNormal => _status == Status.Normal;
+        public static bool IsResetting => _status == Status.Resetting;
+        public static bool IsDead => _status == Status.Dead;
+        public static bool IsRespawning => _status == Status.Respawning;
+        public static bool IsDisabled => _status == Status.Disabled;
+        public static bool IsIdle => HasState(PhysicsState.Idle);
+        public static bool IsMoving => HasState(PhysicsState.Moving);
+        public static bool IsWalking => HasState(PhysicsState.Walking);
+        public static bool IsJumping => HasState(PhysicsState.Jumping);
+        public static bool IsFloatingUp => HasState(PhysicsState.FloatingUp);
+        public static bool IsFalling => HasState(PhysicsState.Falling);
+        public static bool IsSliding => HasState(PhysicsState.Sliding);
+        public static bool IsPushed => HasState(PhysicsState.Pushed);
+        public static bool IsOnSlope => HasState(PhysicsState.OnSlope);
+        public static bool IsOnSteepSlope => HasState(PhysicsState.OnSteepSlope);
+        public static bool IsTurning => HasState(PhysicsState.Turning);
+        public static bool IsRefractedMoving => HasState(PhysicsState.RefractedMoving);
+        public static bool IsHeld => HasMode(Mode.Held);
+        public static bool IsMelted => HasMode(Mode.Melted);
+        public static bool IsRefracted => HasMode(Mode.Refracted);
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticStateOnSubsystemRegistration() => ResetStaticState();
+
+        public static bool HasState(PhysicsState flag) => flag != PhysicsState.None && (_state & flag) == flag;
+        public static bool HasMode(Mode flag) => flag != Mode.None && (_mode & flag) == flag;
+
+        public static bool SetStatus(Status next)
+        {
+            if (_status == next) return true;
+            if (_status == Status.Dead && next != Status.Respawning && next != Status.Resetting)
+            { _blockedMutationCount++; return false; }
+            Status previous = _status;
+            _status = next;
+            _statusTransitionCount++;
+            RecordEvent($"Status {previous} -> {next}");
+            OnStatusChanged?.Invoke(next);
+            return true;
+        }
+
+        public static bool SetMode(Mode mode)
+        {
+            if (IsTerminalStatus(_status)) { _blockedMutationCount++; return false; }
+            if (_mode == mode) return true;
+            _mode = mode;
+            _modeTransitionCount++;
+            RecordEvent($"Mode -> {mode}");
+            OnModeChanged?.Invoke(mode);
+            return true;
+        }
+
+        public static bool AddMode(Mode mode) => SetMode(_mode | mode);
+
+        public static bool RemoveMode(Mode mode)
+        {
+            Mode removed = _mode & mode;
+            if (removed == Mode.None) return true;
+            if (!SetMode(_mode & ~mode)) return false;
+            OnModeRemoved?.Invoke(removed, _mode);
+            return true;
+        }
+
+        public static void SetPhysicsState(PhysicsState state)
+        {
+            if (_state == state) return;
+            _state = state;
+            _stateTransitionCount++;
+            RecordEvent($"PhysicsState -> {state}");
+            OnStateChanged?.Invoke(state);
+        }
+
+        public static void SetEquippedItem(EquippedItem item)
+        {
+            if (_item == item) return;
+            _item = item;
+            OnEquipmentChanged?.Invoke(item);
+        }
+
+        public static void ResetStaticState()
+        {
+            _status = Status.Normal;
+            _mode = Mode.Normal;
+            _item = EquippedItem.None;
+            _state = PhysicsState.Idle;
+            _isBusy = false;
+            _statusTransitionCount = 0;
+            _stateTransitionCount = 0;
+            _modeTransitionCount = 0;
+            _blockedMutationCount = 0;
+            RecentEvents.Clear();
+        }
+
+        private static bool IsTerminalStatus(Status status) =>
+            status == Status.Dead || status == Status.Resetting;
+
+        private static void RecordEvent(string message)
+        {
+            RecentEvents.Add($"{Time.frameCount}: {message}");
+            if (RecentEvents.Count > MaximumRecentEvents) RecentEvents.RemoveAt(0);
+        }
     }
 }
