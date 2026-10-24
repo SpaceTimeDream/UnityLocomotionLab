@@ -77,6 +77,7 @@ namespace Portfolio.Locomotion.Rigidbody
         [SerializeField] private bool _flipVisualWithFacing = true;
 
         private float _movementInput;
+        private Vector2 _fixedStepStartPosition;
         private float _facingDirection = 1f;
         private float _horizontalDistancePerFixedFrame;
         private float _steepSlopeBlockDirection;
@@ -154,7 +155,12 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void FixedUpdate()
         {
-            HandlePhysicsInteractions();
+            if (!_initialized || _movementFrozen) return;
+            _playerPhysics.ApplyPlatformDelta();
+            _playerPhysics.UpdatePhysics();
+            _playerMovement.UpdateMovement();
+            _playerJump.UpdateJump();
+            _playerPhysics.FinalizePlatformSync();
         }
 
         private void OnDisable()
@@ -198,6 +204,9 @@ namespace Portfolio.Locomotion.Rigidbody
 
             InitializePlayerComponents();
             _playerHandler.Initialize(_state);
+            _playerMovement.Initialize(this);
+            _playerPhysics.Initialize(this);
+            _playerJump.Initialize(this);
             _surfaceProbe.Initialize();
         }
 
@@ -425,54 +434,50 @@ namespace Portfolio.Locomotion.Rigidbody
             UpdateFacingDirection();
         }
 
-        private void HandlePhysicsInteractions()
+        internal void StageApplyPlatformDelta()
         {
-            if (!_initialized || _movementFrozen)
-            {
-                return;
-            }
-
-            Vector2 previousPosition = _body.position;
+            _fixedStepStartPosition = _body.position;
             _movingPlatforms.ApplyPlatformMotion(_body, _jump.IsInJumpAscentState);
+        }
+
+        internal void StageUpdatePhysics()
+        {
             _playerPhysics.CheckGrounded(_capsuleCollider, _body, _state, _surfaceProbe, _jump);
             _playerJump.UpdateJumpState(_jump, _body, _state);
             _movingPlatforms.Track(_state, _surfaceProbe.SurfaceCollider, _body);
-
             _steepSlopeBlockDirection = GetSteepSlopeBlockDirection();
             _state.SetSliding(false);
+        }
+
+        internal void StageUpdateMovement()
+        {
             _movement.ApplyMovement(
-                _body,
-                _state,
-                _surfaceProbe,
-                _externalForces,
-                _movementInput,
-                _steepSlopeBlockDirection,
-                _jump.IsInJumpAscentState);
+                _body, _state, _surfaceProbe, _externalForces, _movementInput,
+                _steepSlopeBlockDirection, _jump.IsInJumpAscentState);
+        }
 
+        internal void StageUpdateJump()
+        {
             if (_playerJump.TryApplyJump(_jump, _body, _state, _steepSlopeBlockDirection))
-            {
                 JumpTriggered?.Invoke();
-            }
+        }
 
+        internal void StageFinalizePlatformSync()
+        {
             ApplyGravity();
             ApplyGroundAdhesion();
-
             bool hadExternalForce = _externalForces.HasExternalForce;
             _externalForces.UpdateRuntimeState(_body, _state);
-
             if (hadExternalForce && !_externalForces.HasExternalForce)
-            {
                 _movement.ResetRuntimeState();
-            }
 
             _movingPlatforms.FinalizePlatformSync(_body);
             _state.SetVerticalMotion(_body.linearVelocity.y);
             _state.RefreshPhysicsState(
-                _movementInput,
-                _body.linearVelocity,
+                _movementInput, _body.linearVelocity,
                 _jump.IsInAnticipationFrame || _jump.IsInJumpAscentState,
                 _externalForces.HasExternalForce);
-            _horizontalDistancePerFixedFrame = Mathf.Abs(_body.position.x - previousPosition.x);
+            _horizontalDistancePerFixedFrame = Mathf.Abs(_body.position.x - _fixedStepStartPosition.x);
             RecordGroundAdhesionLog();
             CheckGroundingDebug();
         }
