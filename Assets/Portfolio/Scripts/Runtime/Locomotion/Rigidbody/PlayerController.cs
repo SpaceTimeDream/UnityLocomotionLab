@@ -457,6 +457,8 @@ namespace Portfolio.Locomotion.Rigidbody
                 _steepSlopeBlockDirection, _jump.IsInJumpAscentState);
         }
 
+        internal void NotifyJumpTriggered() => JumpTriggered?.Invoke();
+
         internal void StageUpdateJump()
         {
             if (_playerJump.TryApplyJump(_jump, _body, _state, _steepSlopeBlockDirection))
