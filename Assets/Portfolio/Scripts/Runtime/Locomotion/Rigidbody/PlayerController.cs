@@ -441,12 +441,6 @@ namespace Portfolio.Locomotion.Rigidbody
 
         internal void NotifyJumpTriggered() => JumpTriggered?.Invoke();
 
-        internal void StageUpdateJump()
-        {
-            if (_playerJump.TryApplyJump(_jump, _body, _state, _steepSlopeBlockDirection))
-                JumpTriggered?.Invoke();
-        }
-
         internal void CompletePhysicsStepDiagnostics()
         {
             _horizontalDistancePerFixedFrame = Mathf.Abs(_body.position.x - _fixedStepStartPosition.x);
@@ -456,7 +450,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
         internal void SyncGlobalPhysicsStatus()
         {
-            PlayerStatus.PhysicsState status = PhysicsState.None;
+            PhysicsState status = PhysicsState.None;
             if (_state.IsIdle) status |= PhysicsState.Idle;
             if (_state.IsMoving) status |= PhysicsState.Moving;
             if (_state.IsWalking) status |= PhysicsState.Walking;
