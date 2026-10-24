@@ -378,7 +378,6 @@ namespace Portfolio.Locomotion.Rigidbody
         {
             _playerHandler.BeginReset();
             SetMovementInput(0f);
-            _playerHandler.ResetRuntimeState();
             SetFacingDirection(1f);
             _state.ResetRuntimeState();
             _movement.ResetRuntimeState();
