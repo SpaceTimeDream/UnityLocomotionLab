@@ -435,27 +435,9 @@ namespace Portfolio.Locomotion.Rigidbody
             UpdateFacingDirection();
         }
 
-        internal void StageApplyPlatformDelta()
-        {
-            _fixedStepStartPosition = _body.position;
-            _movingPlatforms.ApplyPlatformMotion(_body, _jump.IsInJumpAscentState);
-        }
+        internal void BeginPhysicsStep() => _fixedStepStartPosition = _body.position;
 
-        internal void StageUpdatePhysics()
-        {
-            _playerPhysics.CheckGrounded(_capsuleCollider, _body, _state, _surfaceProbe, _jump);
-            _playerJump.UpdateJumpState(_jump, _body, _state);
-            _movingPlatforms.Track(_state, _surfaceProbe.SurfaceCollider, _body);
-            _steepSlopeBlockDirection = GetSteepSlopeBlockDirection();
-            _state.SetSliding(false);
-        }
-
-        internal void StageUpdateMovement()
-        {
-            _movement.ApplyMovement(
-                _body, _state, _surfaceProbe, _externalForces, _movementInput,
-                _steepSlopeBlockDirection, _jump.IsInJumpAscentState);
-        }
+        internal void RefreshSteepSlopeBlockDirection() => _steepSlopeBlockDirection = GetSteepSlopeBlockDirection();
 
         internal void NotifyJumpTriggered() => JumpTriggered?.Invoke();
 
@@ -465,28 +447,14 @@ namespace Portfolio.Locomotion.Rigidbody
                 JumpTriggered?.Invoke();
         }
 
-        internal void StageFinalizePlatformSync()
+        internal void CompletePhysicsStepDiagnostics()
         {
-            ApplyGravity();
-            ApplyGroundAdhesion();
-            bool hadExternalForce = _externalForces.HasExternalForce;
-            _externalForces.UpdateRuntimeState(_body, _state);
-            if (hadExternalForce && !_externalForces.HasExternalForce)
-                _movement.ResetRuntimeState();
-
-            _movingPlatforms.FinalizePlatformSync(_body);
-            _state.SetVerticalMotion(_body.linearVelocity.y);
-            _state.RefreshPhysicsState(
-                _movementInput, _body.linearVelocity,
-                _jump.IsInAnticipationFrame || _jump.IsInJumpAscentState,
-                _externalForces.HasExternalForce);
-            SyncGlobalPhysicsStatus();
             _horizontalDistancePerFixedFrame = Mathf.Abs(_body.position.x - _fixedStepStartPosition.x);
             RecordGroundAdhesionLog();
             CheckGroundingDebug();
         }
 
-        private void SyncGlobalPhysicsStatus()
+        internal void SyncGlobalPhysicsStatus()
         {
             PlayerStatus.PhysicsState status = PhysicsState.None;
             if (_state.IsIdle) status |= PhysicsState.Idle;
@@ -570,7 +538,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 _steepSlopeJumpCheckDistance);
         }
 
-        private void ApplyGravity()
+        internal void ApplyGravity()
         {
             _playerPhysics.ApplyGravity(
                 _body,
@@ -580,7 +548,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 _maximumFallSpeed);
         }
 
-        private void ApplyGroundAdhesion()
+        internal void ApplyGroundAdhesion()
         {
             _lastGroundAdhesionDecision = _playerPhysics.GetGroundAdhesionDecision(
                 _body,
@@ -592,7 +560,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 out _lastGroundAdhesionApplied);
         }
 
-        private void RecordGroundAdhesionLog()
+        internal void RecordGroundAdhesionLog()
         {
             if (!_exportGroundAdhesionLog)
             {
@@ -684,7 +652,7 @@ namespace Portfolio.Locomotion.Rigidbody
             return $"\"{value.Replace("\"", "\"\"")}\"";
         }
 
-        private void CheckGroundingDebug()
+        internal void CheckGroundingDebug()
         {
             if (_state.Grounded)
             {
