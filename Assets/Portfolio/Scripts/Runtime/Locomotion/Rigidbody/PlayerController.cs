@@ -376,6 +376,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _playerHandler.ResetRuntimeState();
             SetFacingDirection(1f);
             _state.ResetRuntimeState();
+            PlayerStatus.SetPhysicsState(PlayerStatus.PhysicsState.Idle);
             _movement.ResetRuntimeState();
             _jump.ResetRuntimeState();
             _externalForces.ClearRuntimeState();
@@ -477,9 +478,26 @@ namespace Portfolio.Locomotion.Rigidbody
                 _movementInput, _body.linearVelocity,
                 _jump.IsInAnticipationFrame || _jump.IsInJumpAscentState,
                 _externalForces.HasExternalForce);
+            SyncGlobalPhysicsStatus();
             _horizontalDistancePerFixedFrame = Mathf.Abs(_body.position.x - _fixedStepStartPosition.x);
             RecordGroundAdhesionLog();
             CheckGroundingDebug();
+        }
+
+        private void SyncGlobalPhysicsStatus()
+        {
+            PlayerStatus.PhysicsState status = PlayerStatus.PhysicsState.None;
+            if (_state.IsIdle) status |= PlayerStatus.PhysicsState.Idle;
+            if (_state.IsMoving) status |= PlayerStatus.PhysicsState.Moving;
+            if (_state.IsWalking) status |= PlayerStatus.PhysicsState.Walking;
+            if (_state.IsJumping) status |= PlayerStatus.PhysicsState.Jumping;
+            if (_state.Rising) status |= PlayerStatus.PhysicsState.FloatingUp;
+            if (_state.Falling) status |= PlayerStatus.PhysicsState.Falling;
+            if (_state.Sliding) status |= PlayerStatus.PhysicsState.Sliding;
+            if (_state.IsPushed || _externalForces.HasExternalForce) status |= PlayerStatus.PhysicsState.Pushed;
+            if (_state.OnWalkableSlope) status |= PlayerStatus.PhysicsState.OnSlope;
+            if (_state.OnSteepSlope) status |= PlayerStatus.PhysicsState.OnSteepSlope;
+            PlayerStatus.SetPhysicsState(status == PlayerStatus.PhysicsState.None ? PlayerStatus.PhysicsState.Idle : status);
         }
 
         private void RefreshGameInput()
