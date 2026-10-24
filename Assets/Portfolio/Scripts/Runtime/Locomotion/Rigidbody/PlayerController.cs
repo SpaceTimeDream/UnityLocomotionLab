@@ -334,6 +334,7 @@ namespace Portfolio.Locomotion.Rigidbody
         {
             _state.SetControlEnabled(controlEnabled);
             PlayerStatus.SetStatus(controlEnabled ? Status.Normal : Status.Disabled);
+            _playerHandler?.NotifyControlStateChanged();
 
             if (!controlEnabled)
             {
