@@ -333,7 +333,7 @@ namespace Portfolio.Locomotion.Rigidbody
         public void SetControlEnabled(bool controlEnabled)
         {
             _state.SetControlEnabled(controlEnabled);
-            PlayerStatus.SetStatus(controlEnabled ? PlayerStatus.Status.Normal : PlayerStatus.Status.Disabled);
+            PlayerStatus.SetStatus(controlEnabled ? Status.Normal : Status.Disabled);
 
             if (!controlEnabled)
             {
@@ -376,7 +376,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _playerHandler.ResetRuntimeState();
             SetFacingDirection(1f);
             _state.ResetRuntimeState();
-            PlayerStatus.SetPhysicsState(PlayerStatus.PhysicsState.Idle);
+            PlayerStatus.SetPhysicsState(PhysicsState.Idle);
             _movement.ResetRuntimeState();
             _jump.ResetRuntimeState();
             _externalForces.ClearRuntimeState();
@@ -488,18 +488,18 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private void SyncGlobalPhysicsStatus()
         {
-            PlayerStatus.PhysicsState status = PlayerStatus.PhysicsState.None;
-            if (_state.IsIdle) status |= PlayerStatus.PhysicsState.Idle;
-            if (_state.IsMoving) status |= PlayerStatus.PhysicsState.Moving;
-            if (_state.IsWalking) status |= PlayerStatus.PhysicsState.Walking;
-            if (_state.IsJumping) status |= PlayerStatus.PhysicsState.Jumping;
-            if (_state.Rising) status |= PlayerStatus.PhysicsState.FloatingUp;
-            if (_state.Falling) status |= PlayerStatus.PhysicsState.Falling;
-            if (_state.Sliding) status |= PlayerStatus.PhysicsState.Sliding;
-            if (_state.IsPushed || _externalForces.HasExternalForce) status |= PlayerStatus.PhysicsState.Pushed;
-            if (_state.OnWalkableSlope) status |= PlayerStatus.PhysicsState.OnSlope;
-            if (_state.OnSteepSlope) status |= PlayerStatus.PhysicsState.OnSteepSlope;
-            PlayerStatus.SetPhysicsState(status == PlayerStatus.PhysicsState.None ? PlayerStatus.PhysicsState.Idle : status);
+            PlayerStatus.PhysicsState status = PhysicsState.None;
+            if (_state.IsIdle) status |= PhysicsState.Idle;
+            if (_state.IsMoving) status |= PhysicsState.Moving;
+            if (_state.IsWalking) status |= PhysicsState.Walking;
+            if (_state.IsJumping) status |= PhysicsState.Jumping;
+            if (_state.Rising) status |= PhysicsState.FloatingUp;
+            if (_state.Falling) status |= PhysicsState.Falling;
+            if (_state.Sliding) status |= PhysicsState.Sliding;
+            if (_state.IsPushed || _externalForces.HasExternalForce) status |= PhysicsState.Pushed;
+            if (_state.OnWalkableSlope) status |= PhysicsState.OnSlope;
+            if (_state.OnSteepSlope) status |= PhysicsState.OnSteepSlope;
+            PlayerStatus.SetPhysicsState(status == PhysicsState.None ? PhysicsState.Idle : status);
         }
 
         private void RefreshGameInput()
