@@ -8,28 +8,36 @@ namespace Portfolio.Locomotion.Rigidbody
     /// Global player status and mode flags. Physics measurements and detailed locomotion
     /// transitions remain owned by LocomotionState.
     /// </summary>
+public enum Status { Normal, Dead, Respawning, Disabled, Resetting }
+
+public enum Mode
+{
+    None = 0, Normal = 1 << 0, NoClip = 1 << 1, NoGravity = 1 << 2,
+    BulletTime = 1 << 3, Refracted = 1 << 4, Held = 1 << 5,
+    Melted = 1 << 6, Cutscene = 1 << 7, FloatingArea = 1 << 8, Dialogue = 1 << 9
+}
+
+public enum PhysicsState
+{
+    None = 0, Idle = 1 << 0, Moving = 1 << 1, Walking = 1 << 2,
+    Jumping = 1 << 3, FloatingUp = 1 << 4, Falling = 1 << 5,
+    Sliding = 1 << 6, Pushed = 1 << 7, OnSlope = 1 << 8,
+    OnSteepSlope = 1 << 9, Turning = 1 << 10, RefractedMoving = 1 << 11
+}
+
+public enum EquippedItem { None, MirrorItem, Suncatcher }
+
     public static class PlayerStatus
     {
-        public enum Status { Normal, Dead, Respawning, Disabled, Resetting }
+
 
         [Flags]
-        public enum Mode
-        {
-            None = 0, Normal = 1 << 0, NoClip = 1 << 1, NoGravity = 1 << 2,
-            BulletTime = 1 << 3, Refracted = 1 << 4, Held = 1 << 5,
-            Melted = 1 << 6, Cutscene = 1 << 7, FloatingArea = 1 << 8, Dialogue = 1 << 9
-        }
+
 
         [Flags]
-        public enum PhysicsState
-        {
-            None = 0, Idle = 1 << 0, Moving = 1 << 1, Walking = 1 << 2,
-            Jumping = 1 << 3, FloatingUp = 1 << 4, Falling = 1 << 5,
-            Sliding = 1 << 6, Pushed = 1 << 7, OnSlope = 1 << 8,
-            OnSteepSlope = 1 << 9, Turning = 1 << 10, RefractedMoving = 1 << 11
-        }
 
-        public enum EquippedItem { None, MirrorItem, Suncatcher }
+
+
 
         public static event Action<bool> OnBusyStateChanged;
         public static event Action<Status> OnStatusChanged;
