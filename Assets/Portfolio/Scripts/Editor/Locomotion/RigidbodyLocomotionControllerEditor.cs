@@ -5,9 +5,9 @@ using Portfolio.Locomotion.Rigidbody;
 using UnityEditor;
 using UnityEngine;
 
-[CustomEditor(typeof(RigidbodyLocomotionController), true)]
+[CustomEditor(typeof(PlayerController), true)]
 [CanEditMultipleObjects]
-public class RigidbodyLocomotionControllerEditor : Editor
+public class PlayerControllerEditor : Editor
 {
     //------------------------------- Constants -------------------------------//
 
@@ -57,7 +57,7 @@ public class RigidbodyLocomotionControllerEditor : Editor
     private readonly Dictionary<string, bool> _foldouts = new Dictionary<string, bool>();
     private readonly List<Vector2> _velocityHistory = new List<Vector2>(MaximumVelocityHistory);
 
-    private RigidbodyLocomotionController _controller;
+    private PlayerController _controller;
     private Vector2 _lastVelocity;
     private Vector3 _lastPosition;
     private double _lastMonitorTime;
@@ -78,7 +78,7 @@ public class RigidbodyLocomotionControllerEditor : Editor
         InitializeEditors();
         InitializeFoldouts();
         SubscribeEvents();
-        _controller = target as RigidbodyLocomotionController;
+        _controller = target as PlayerController;
         _isInitialized = true;
     }
 
