@@ -24,7 +24,7 @@ namespace Portfolio.Locomotion.Core
         private const float ControlRowHeight = 22f;
 
         [Header("COMPONENTS")]
-        [SerializeField] private RigidbodyLocomotionController _rigidbodyController;
+        [SerializeField] private PlayerController _rigidbodyController;
         [SerializeField] private SimulatedSplineLocomotionController _simulatedController;
         [SerializeField] private BasicCameraFollow2D _cameraFollow;
         [SerializeField] private GameInput _gameInput;
