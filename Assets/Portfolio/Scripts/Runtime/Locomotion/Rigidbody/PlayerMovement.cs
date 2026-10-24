@@ -9,6 +9,10 @@ namespace Portfolio.Locomotion.Rigidbody
     [DisallowMultipleComponent]
     public sealed class PlayerMovement : MonoBehaviour
     {
+        private PlayerController _controller;
+
+        public void Initialize(PlayerController controller) => _controller = controller;
+        public void UpdateMovement() => _controller?.StageUpdateMovement();
         public float ResolveSteepSlopeBlockDirection(
             float movementInput,
             float facingDirection,
