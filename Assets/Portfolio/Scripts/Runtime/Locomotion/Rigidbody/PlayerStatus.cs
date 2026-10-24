@@ -183,6 +183,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public static void SetPhysicsState(PhysicsState state)
         {
+            if (IsTerminalStatus(_status)) { _blockedMutationCount++; return; }
             if (_state == state) return;
             _state = state;
             _stateTransitionCount++;
@@ -192,6 +193,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public static void SetEquippedItem(EquippedItem item)
         {
+            if (IsTerminalStatus(_status)) { _blockedMutationCount++; return; }
             if (_item == item) return;
             _item = item;
             OnEquipmentChanged?.Invoke(_item);
