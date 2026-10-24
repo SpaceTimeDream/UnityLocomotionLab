@@ -24,6 +24,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
         private LocomotionState _state;
         private LocomotionPhysicsState _lastState;
+        private bool _lastDisabledState;
 
         public event Action<LocomotionPhysicsState> StateTransitioned;
         public event Action<bool> WalkingChanged;
@@ -57,6 +58,7 @@ namespace Portfolio.Locomotion.Rigidbody
 
             _state = state;
             _lastState = _state != null ? _state.CurrentState : LocomotionPhysicsState.None;
+            _lastDisabledState = IsPlayerDisabled;
 
             if (_state != null)
                 _state.StateChanged += HandleStateChanged;
@@ -68,7 +70,7 @@ namespace Portfolio.Locomotion.Rigidbody
             _lastState = nextState;
 
             StateTransitioned?.Invoke(nextState);
-            OnPlayerDisabledStateChanged?.Invoke(IsPlayerDisabled);
+            NotifyDisabledStateChanged();
 
             NotifyFlagChanged(previousState, nextState, LocomotionPhysicsState.Walking, WalkingChanged);
             NotifyFlagChanged(previousState, nextState, LocomotionPhysicsState.Jumping, JumpingChanged);
@@ -138,7 +140,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 return;
 
             _movementFrozen = true;
-            OnPlayerDisabledStateChanged?.Invoke(true);
+            NotifyDisabledStateChanged();
             _cachedPausedVelocity = body.linearVelocity;
             _cachedPausedGravityScale = body.gravityScale;
             body.linearVelocity = Vector2.zero;
@@ -151,7 +153,7 @@ namespace Portfolio.Locomotion.Rigidbody
                 return;
 
             _movementFrozen = false;
-            OnPlayerDisabledStateChanged?.Invoke(IsPlayerDisabled);
+            NotifyDisabledStateChanged();
             body.linearVelocity = _cachedPausedVelocity;
             body.gravityScale = _cachedPausedGravityScale;
         }
@@ -159,6 +161,14 @@ namespace Portfolio.Locomotion.Rigidbody
         public void NotifyJumpTriggered()
         {
             JumpSoundRequested?.Invoke();
+        }
+
+        private void NotifyDisabledStateChanged()
+        {
+            bool isDisabled = IsPlayerDisabled;
+            if (_lastDisabledState == isDisabled) return;
+            _lastDisabledState = isDisabled;
+            OnPlayerDisabledStateChanged?.Invoke(isDisabled);
         }
 
         private void OnDestroy()
