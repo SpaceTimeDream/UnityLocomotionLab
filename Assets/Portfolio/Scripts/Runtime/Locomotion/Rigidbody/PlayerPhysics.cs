@@ -5,7 +5,7 @@ namespace Portfolio.Locomotion.Rigidbody
 {
     /// <summary>
     /// Owns Rigidbody locomotion's ground probing, gravity and ground-adhesion decisions.
-    /// The existing serialized tuning values remain on RigidbodyLocomotionController for
+    /// The existing serialized tuning values remain on PlayerController for
     /// scene/prefab compatibility and are passed into these operations.
     /// </summary>
     [DisallowMultipleComponent]
@@ -15,9 +15,49 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public void Initialize(PlayerController controller) => _controller = controller;
 
-        public void ApplyPlatformDelta() => _controller?.StageApplyPlatformDelta();
-        public void UpdatePhysics() => _controller?.StageUpdatePhysics();
-        public void FinalizePlatformSync() => _controller?.StageFinalizePlatformSync();
+        public void ApplyPlatformDelta()
+        {
+            if (_controller == null) return;
+            _controller.BeginPhysicsStep();
+            _controller.MovingPlatforms.ApplyPlatformMotion(
+                _controller.Body, _controller.Jump.IsInJumpAscentState);
+        }
+
+        public void UpdatePhysics()
+        {
+            if (_controller == null) return;
+            CheckGrounded(
+                _controller.MainCollider, _controller.Body, _controller.State,
+                _controller.SurfaceProbe, _controller.Jump);
+            _controller.PlayerJump.UpdateJumpState(
+                _controller.Jump, _controller.Body, _controller.State);
+            _controller.MovingPlatforms.Track(
+                _controller.State, _controller.SurfaceProbe.SurfaceCollider, _controller.Body);
+            _controller.RefreshSteepSlopeBlockDirection();
+            _controller.State.SetSliding(false);
+        }
+
+        public void FinalizePlatformSync()
+        {
+            if (_controller == null) return;
+            _controller.ApplyGravity();
+            _controller.ApplyGroundAdhesion();
+
+            bool hadExternalForce = _controller.ExternalForces.HasExternalForce;
+            _controller.ExternalForces.UpdateRuntimeState(_controller.Body, _controller.State);
+            if (hadExternalForce && !_controller.ExternalForces.HasExternalForce)
+                _controller.Movement.ResetRuntimeState();
+
+            _controller.MovingPlatforms.FinalizePlatformSync(_controller.Body);
+            _controller.State.SetVerticalMotion(_controller.Body.linearVelocity.y);
+            _controller.State.RefreshPhysicsState(
+                _controller.MovementInput,
+                _controller.Body.linearVelocity,
+                _controller.Jump.IsInAnticipationFrame || _controller.Jump.IsInJumpAscentState,
+                _controller.ExternalForces.HasExternalForce);
+            _controller.SyncGlobalPhysicsStatus();
+            _controller.CompletePhysicsStepDiagnostics();
+        }
         /// <summary>
         /// Performs the ground check and returns the accepted grounded state.
         /// SurfaceProbe2D performs the filtered Ground-layer contacts/raycasts/capsule cast
