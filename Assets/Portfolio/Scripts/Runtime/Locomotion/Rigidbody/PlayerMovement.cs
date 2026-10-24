@@ -12,7 +12,18 @@ namespace Portfolio.Locomotion.Rigidbody
         private PlayerController _controller;
 
         public void Initialize(PlayerController controller) => _controller = controller;
-        public void UpdateMovement() => _controller?.StageUpdateMovement();
+        public void UpdateMovement()
+        {
+            if (_controller == null) return;
+            _controller.Movement.ApplyMovement(
+                _controller.Body,
+                _controller.State,
+                _controller.SurfaceProbe,
+                _controller.ExternalForces,
+                _controller.MovementInput,
+                _controller.SteepSlopeBlockDirection,
+                _controller.Jump.IsInJumpAscentState);
+        }
         public float ResolveSteepSlopeBlockDirection(
             float movementInput,
             float facingDirection,
