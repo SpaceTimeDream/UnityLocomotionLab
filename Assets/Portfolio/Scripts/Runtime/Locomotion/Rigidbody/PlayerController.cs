@@ -133,12 +133,12 @@ namespace Portfolio.Locomotion.Rigidbody
 
         #region Unity
 
-        private void Start()
+        protected void Start()
         {
             Initialize();
         }
 
-        private void OnEnable()
+        protected void OnEnable()
         {
             if (!_initialized)
             {
@@ -148,12 +148,12 @@ namespace Portfolio.Locomotion.Rigidbody
             InitializeEvents();
         }
 
-        private void Update()
+        protected void Update()
         {
             UpdateLoop();
         }
 
-        private void FixedUpdate()
+        protected void FixedUpdate()
         {
             if (!_initialized || _movementFrozen) return;
             _playerPhysics.ApplyPlatformDelta();
@@ -163,14 +163,14 @@ namespace Portfolio.Locomotion.Rigidbody
             _playerPhysics.FinalizePlatformSync();
         }
 
-        private void OnDisable()
+        protected void OnDisable()
         {
             UnsubscribeEvents();
             SetMovementInput(0f);
             CloseGroundAdhesionLog();
         }
 
-        private void OnDestroy()
+        protected void OnDestroy()
         {
             UnsubscribeEvents();
             CloseGroundAdhesionLog();
@@ -788,7 +788,7 @@ namespace Portfolio.Locomotion.Rigidbody
 #if UNITY_EDITOR
         //------------------------------- Editor -------------------------------//
 
-        private void OnValidate()
+        protected void OnValidate()
         {
             _gravityScale = Mathf.Max(0f, _gravityScale);
             _jumpAscentGravityMultiplier = Mathf.Max(0f, _jumpAscentGravityMultiplier);
