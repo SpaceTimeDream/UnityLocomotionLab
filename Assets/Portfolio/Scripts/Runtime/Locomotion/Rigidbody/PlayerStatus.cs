@@ -4,40 +4,64 @@ using UnityEngine;
 
 namespace Portfolio.Locomotion.Rigidbody
 {
+    public enum Status
+    {
+        Normal,
+        Dead,
+        Respawning,
+        Disabled,
+        Resetting
+    }
+
+    [Flags]
+    public enum Mode
+    {
+        None = 0,
+        Normal = 1 << 0,
+        NoClip = 1 << 1,
+        NoGravity = 1 << 2,
+        BulletTime = 1 << 3,
+        Refracted = 1 << 4,
+        Held = 1 << 5,
+        Melted = 1 << 6,
+        Cutscene = 1 << 7,
+        FloatingArea = 1 << 8,
+        Dialogue = 1 << 9
+    }
+
+    [Flags]
+    public enum PhysicsState
+    {
+        None = 0,
+        Idle = 1 << 0,
+        Moving = 1 << 1,
+        Walking = 1 << 2,
+        Jumping = 1 << 3,
+        FloatingUp = 1 << 4,
+        Falling = 1 << 5,
+        Sliding = 1 << 6,
+        Pushed = 1 << 7,
+        OnSlope = 1 << 8,
+        OnSteepSlope = 1 << 9,
+        Turning = 1 << 10,
+        RefractedMoving = 1 << 11
+    }
+
+    public enum EquippedItem
+    {
+        None,
+        MirrorItem,
+        Suncatcher
+    }
+
     /// <summary>
     /// Global player status and mode flags. Physics measurements and detailed locomotion
     /// transitions remain owned by LocomotionState.
     /// </summary>
-public enum Status { Normal, Dead, Respawning, Disabled, Resetting }
-
-public enum Mode
-{
-    None = 0, Normal = 1 << 0, NoClip = 1 << 1, NoGravity = 1 << 2,
-    BulletTime = 1 << 3, Refracted = 1 << 4, Held = 1 << 5,
-    Melted = 1 << 6, Cutscene = 1 << 7, FloatingArea = 1 << 8, Dialogue = 1 << 9
-}
-
-public enum PhysicsState
-{
-    None = 0, Idle = 1 << 0, Moving = 1 << 1, Walking = 1 << 2,
-    Jumping = 1 << 3, FloatingUp = 1 << 4, Falling = 1 << 5,
-    Sliding = 1 << 6, Pushed = 1 << 7, OnSlope = 1 << 8,
-    OnSteepSlope = 1 << 9, Turning = 1 << 10, RefractedMoving = 1 << 11
-}
-
-public enum EquippedItem { None, MirrorItem, Suncatcher }
-
     public static class PlayerStatus
     {
-
-
-        [Flags]
-
-
-        [Flags]
-
-
-
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStaticStateOnSubsystemRegistration() => ResetStaticState();
 
         public static event Action<bool> OnBusyStateChanged;
         public static event Action<Status> OnStatusChanged;
@@ -62,23 +86,30 @@ public enum EquippedItem { None, MirrorItem, Suncatcher }
         public static Mode CurrentMode => _mode;
         public static EquippedItem CurrentEquippedItem => _item;
         public static PhysicsState CurrentState => _state;
-        public static bool IsBusy
-        {
-            get => _isBusy;
-            set
-            {
-                if (IsTerminalStatus(_status)) { _blockedMutationCount++; return; }
-                if (_isBusy == value) return;
-                _isBusy = value;
-                OnBusyStateChanged?.Invoke(value);
-            }
-        }
-
         public static int StatusTransitionCount => _statusTransitionCount;
         public static int StateTransitionCount => _stateTransitionCount;
         public static int ModeTransitionCount => _modeTransitionCount;
         public static int BlockedMutationCount => _blockedMutationCount;
         public static string RecentDebugEvents => string.Join("\n", RecentEvents);
+
+        public static bool IsBusy
+        {
+            get => _isBusy;
+            set
+            {
+                if (IsTerminalStatus(_status))
+                {
+                    _blockedMutationCount++;
+                    return;
+                }
+                if (_isBusy == value) return;
+                bool previous = _isBusy;
+                _isBusy = value;
+                RecordEvent($"Busy {previous} -> {_isBusy}");
+                OnBusyStateChanged?.Invoke(_isBusy);
+            }
+        }
+
         public static bool IsNormal => _status == Status.Normal;
         public static bool IsResetting => _status == Status.Resetting;
         public static bool IsDead => _status == Status.Dead;
@@ -100,17 +131,21 @@ public enum EquippedItem { None, MirrorItem, Suncatcher }
         public static bool IsMelted => HasMode(Mode.Melted);
         public static bool IsRefracted => HasMode(Mode.Refracted);
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStaticStateOnSubsystemRegistration() => ResetStaticState();
+        public static bool HasState(PhysicsState flag) =>
+            flag != PhysicsState.None && (_state & flag) == flag;
 
-        public static bool HasState(PhysicsState flag) => flag != PhysicsState.None && (_state & flag) == flag;
-        public static bool HasMode(Mode flag) => flag != Mode.None && (_mode & flag) == flag;
+        public static bool HasMode(Mode flag) =>
+            flag != Mode.None && (_mode & flag) == flag;
 
         public static bool SetStatus(Status next)
         {
             if (_status == next) return true;
             if (_status == Status.Dead && next != Status.Respawning && next != Status.Resetting)
-            { _blockedMutationCount++; return false; }
+            {
+                _blockedMutationCount++;
+                return false;
+            }
+
             Status previous = _status;
             _status = next;
             _statusTransitionCount++;
@@ -121,12 +156,17 @@ public enum EquippedItem { None, MirrorItem, Suncatcher }
 
         public static bool SetMode(Mode mode)
         {
-            if (IsTerminalStatus(_status)) { _blockedMutationCount++; return false; }
+            if (IsTerminalStatus(_status))
+            {
+                _blockedMutationCount++;
+                return false;
+            }
             if (_mode == mode) return true;
+
             _mode = mode;
             _modeTransitionCount++;
-            RecordEvent($"Mode -> {mode}");
-            OnModeChanged?.Invoke(mode);
+            RecordEvent($"Mode -> {_mode}");
+            OnModeChanged?.Invoke(_mode);
             return true;
         }
 
@@ -146,15 +186,15 @@ public enum EquippedItem { None, MirrorItem, Suncatcher }
             if (_state == state) return;
             _state = state;
             _stateTransitionCount++;
-            RecordEvent($"PhysicsState -> {state}");
-            OnStateChanged?.Invoke(state);
+            RecordEvent($"PhysicsState -> {_state}");
+            OnStateChanged?.Invoke(_state);
         }
 
         public static void SetEquippedItem(EquippedItem item)
         {
             if (_item == item) return;
             _item = item;
-            OnEquipmentChanged?.Invoke(item);
+            OnEquipmentChanged?.Invoke(_item);
         }
 
         public static void ResetStaticState()
