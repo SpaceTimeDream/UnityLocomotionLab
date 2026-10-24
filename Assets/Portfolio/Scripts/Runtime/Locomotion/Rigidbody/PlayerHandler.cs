@@ -163,6 +163,8 @@ namespace Portfolio.Locomotion.Rigidbody
             JumpSoundRequested?.Invoke();
         }
 
+        public void NotifyControlStateChanged() => NotifyDisabledStateChanged();
+
         private void NotifyDisabledStateChanged()
         {
             bool isDisabled = IsPlayerDisabled;
