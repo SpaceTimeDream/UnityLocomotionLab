@@ -18,7 +18,7 @@
 ## Compatibility and migration
 
 - `RigidbodyLocomotionController` remains only as an obsolete subclass of `PlayerController`. This keeps the original script GUID available for existing scenes/prefabs while new runtime code uses `PlayerController`.
-- The custom Inspector now targets `PlayerController`; its existing serialized property names are retained to avoid moving tuning data during the behavior refactor.
+- The existing tuning Inspector now targets `PlayerController`; its serialized property names are retained to avoid moving tuning data during the behavior refactor. A separate `PlayerHandlerEditor` displays global status/mode counters and provides reset, velocity, control, and freeze quick actions.
 - `LocomotionDemoSwitcher` now references `PlayerController`.
 - Do not remove the compatibility shim until all scenes and prefabs have been opened, migrated, saved, and checked for missing scripts. If the project opts to remove it later, migrate serialized components first.
 
