@@ -376,17 +376,20 @@ namespace Portfolio.Locomotion.Rigidbody
 
         public void ResetLocomotionRuntimeState()
         {
+            PlayerStatus.SetStatus(Status.Resetting);
             SetMovementInput(0f);
             _playerHandler.ResetRuntimeState();
             SetFacingDirection(1f);
             _state.ResetRuntimeState();
-            PlayerStatus.SetPhysicsState(PhysicsState.Idle);
             _movement.ResetRuntimeState();
             _jump.ResetRuntimeState();
             _externalForces.ClearRuntimeState();
             _movingPlatforms.ClearRuntimeState();
             _steepSlopeBlockDirection = 0f;
             ZeroVelocity();
+            PlayerStatus.SetStatus(Status.Normal);
+            PlayerStatus.SetMode(Mode.Normal);
+            PlayerStatus.SetPhysicsState(PhysicsState.Idle);
         }
 
         public void AddExternalImpulse(
