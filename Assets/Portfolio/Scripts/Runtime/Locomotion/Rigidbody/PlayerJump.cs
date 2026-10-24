@@ -12,7 +12,18 @@ namespace Portfolio.Locomotion.Rigidbody
         private PlayerController _controller;
 
         public void Initialize(PlayerController controller) => _controller = controller;
-        public void UpdateJump() => _controller?.StageUpdateJump();
+        public void UpdateJump()
+        {
+            if (_controller == null) return;
+            if (TryApplyJump(
+                _controller.Jump,
+                _controller.Body,
+                _controller.State,
+                _controller.SteepSlopeBlockDirection))
+            {
+                _controller.NotifyJumpTriggered();
+            }
+        }
         public void UpdateJumpState(RigidbodyJump jump, UnityEngine.Rigidbody2D body, Portfolio.Locomotion.Core.LocomotionState state)
         {
             if (jump != null && body != null && state != null)
