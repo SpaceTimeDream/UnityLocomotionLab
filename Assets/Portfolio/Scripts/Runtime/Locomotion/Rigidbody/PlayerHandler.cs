@@ -180,6 +180,21 @@ namespace Portfolio.Locomotion.Rigidbody
                 _state.StateChanged -= HandleStateChanged;
         }
 
+        public void BeginReset()
+        {
+            PlayerStatus.SetStatus(Status.Resetting);
+            ResetRuntimeState();
+            NotifyDisabledStateChanged();
+        }
+
+        public void CompleteReset()
+        {
+            PlayerStatus.SetStatus(Status.Normal);
+            PlayerStatus.SetMode(Mode.Normal);
+            PlayerStatus.SetPhysicsState(PhysicsState.Idle);
+            NotifyDisabledStateChanged();
+        }
+
         public void ResetRuntimeState()
         {
             _scriptedMoveInput = Vector2.zero;
