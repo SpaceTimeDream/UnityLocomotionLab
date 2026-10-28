@@ -6,10 +6,6 @@ namespace Portfolio.Locomotion.Spline.Path
 {
     public class SpriteShapeSplinePath2D : MonoBehaviour
     {
-        //------------------------------- Game Pause -------------------------------//
-
-        //------------------------------- Debugging Methods -------------------------------//
-
         //------------------------------- Parameters -------------------------------//
 
         #region Components
@@ -17,6 +13,10 @@ namespace Portfolio.Locomotion.Spline.Path
         [SerializeField, Min(2)] private int _samplesPerSegment = 16;
         [SerializeField] private bool _drawSelectedGizmos = true;
         [SerializeField] private float _gizmoNormalLength = 0.35f;
+
+        #endregion
+
+        #region Flags
 
         private readonly List<Vector2> _points = new List<Vector2>(128);
         private readonly List<Vector2> _tangents = new List<Vector2>(128);
@@ -30,7 +30,9 @@ namespace Portfolio.Locomotion.Spline.Path
         private float _totalLength;
         private bool _cacheValid;
 
-        // Properties
+        #endregion
+
+        #region Properties
         public float TotalLength
         {
             get
@@ -48,10 +50,6 @@ namespace Portfolio.Locomotion.Spline.Path
                 return _points.Count;
             }
         }
-
-        #endregion
-
-        #region Flags
 
         #endregion
 
@@ -77,8 +75,6 @@ namespace Portfolio.Locomotion.Spline.Path
         private void Initialize()
         {
             InitializeComponents();
-            InitializeModules();
-            InitializeEvents();
             RebuildCache();
         }
 
@@ -89,10 +85,6 @@ namespace Portfolio.Locomotion.Spline.Path
                 _spriteShapeController = GetComponent<SpriteShapeController>();
             }
         }
-
-        private void InitializeModules() { }
-
-        private void InitializeEvents() { }
 
         #endregion
 

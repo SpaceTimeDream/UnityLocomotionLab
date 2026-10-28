@@ -10,6 +10,10 @@ GameObject:
   m_Component:
   - component: {fileID: 1001}
   - component: {fileID: 1002}
+  - component: {fileID: 990001001}
+  - component: {fileID: 990001002}
+  - component: {fileID: 990001003}
+  - component: {fileID: 990001004}
   - component: {fileID: 1003}
   - component: {fileID: 1009}
   m_Layer: 0
@@ -39,36 +43,8 @@ MonoBehaviour:
   _capsuleCollider: {fileID: 1009}
   _visualRoot: {fileID: 1011}
   _gameInput: {fileID: 0}
-  _state:
-    _controlEnabled: 1
-    _grounded: 0
-    _rising: 0
-    _falling: 0
-    _onWalkableSlope: 0
-    _onSteepSlope: 0
-    _sliding: 0
-    _surfaceNormal: {x: 0, y: 1}
-    _slopeAngle: 0
-    _currentState: 1
-  _movement:
-    _maximumGroundSpeed: 8
-    _groundAcceleration: 70
-    _groundDeceleration: 90
-    _slopeAcceleration: 70
-    _slopeDeceleration: 90
-    _airAcceleration: 35
-    _airDeceleration: 25
-    _minimumInput: 0.01
-    _groundedStopSpeed: 0.05
-  _jump:
-    _jumpVelocity: 12
-    _maximumJumpVelocity: 16
-    _jumpBufferTime: 0.12
-    _coyoteTime: 0.1
-    _jumpAnticipationDuration: 0.08
-    _groundCheckDelayFixedFrames: 8
-    _enableEarlyRelease: 1
-    _earlyReleaseVelocityMultiplier: 0.5
+  _movement: {fileID: 990001001}
+  _jump: {fileID: 990001002}
   _surfaceProbe:
     _groundLayers:
       serializedVersion: 2
@@ -86,17 +62,100 @@ MonoBehaviour:
     _collisionSkin: 0.02
     _surfaceNormalTolerance: 0.001
     _maximumResolutionIterations: 4
-  _gravity: 28
-  _jumpAscentGravityMultiplier: 1
-  _fallGravityMultiplier: 1.6
+  _movingPlatforms:
+    _enabled: 1
+  _physics: {fileID: 990001003}
+  _playerHandler: {fileID: 990001004}
+  _visuals:
+    _groundedAlignmentSpeed: 18
+    _constrainZRotation: 1
+    _flipVisualWithFacing: 1
+--- !u!114 &990001001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5db66305d4064aee80e9f4df6d714968, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  _maximumGroundSpeed: 8
+  _groundAcceleration: 70
+  _groundDeceleration: 90
+  _slopeAcceleration: 70
+  _slopeDeceleration: 90
+  _airAcceleration: 38
+  _airDeceleration: 40
+  _minimumInput: 0.01
+  _groundedStopSpeed: 0.05
+--- !u!114 &990001002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe113e48c63949179592c68adbc66eff, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  _jumpVelocity: 13.3
+  _maximumJumpVelocity: 13.3
+  _jumpBufferTime: 0.12
+  _coyoteTime: 0.1
+  _jumpAnticipationDuration: 0.04
+  _groundCheckDelayFixedFrames: 5
+  _enableEarlyRelease: 1
+  _earlyReleaseVelocityMultiplier: 0.5
+--- !u!114 &990001003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48e3f8b2e5d14ce0b6782a106ce84b2a, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  _state:
+    _controlEnabled: 1
+    _grounded: 0
+    _rising: 0
+    _falling: 0
+    _onWalkableSlope: 0
+    _onSteepSlope: 0
+    _sliding: 0
+    _surfaceNormal: {x: 0, y: 1}
+    _slopeAngle: 0
+    _currentState: 1
+  _gravity: 33.35
+  _jumpAscentGravityMultiplier: 1.1
+  _fallGravityMultiplier: 2.1
   _maximumFallSpeed: 22
   _steepSlopeCheckDistance: 0.35
-  _groundedAlignmentSpeed: 18
-  _constrainZRotation: 1
-  _flipVisualWithFacing: 1
   _demoResetY: -8
   _drawSelectedGizmos: 1
   _velocityGizmoScale: 0.12
+--- !u!114 &990001004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1000}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 27db389b671c43f5b6c279c0e1e34c5a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _characterAnimationController: {fileID: 0}
+  _playerController: {fileID: 1002}
 --- !u!50 &1003
 Rigidbody2D:
   serializedVersion: 5

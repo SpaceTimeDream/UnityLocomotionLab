@@ -13,6 +13,10 @@ GameObject:
   - component: {fileID: 2001132994}
   - component: {fileID: 2001132993}
   - component: {fileID: 2001132992}
+  - component: {fileID: 990000001}
+  - component: {fileID: 990000002}
+  - component: {fileID: 990000003}
+  - component: {fileID: 990000004}
   m_Layer: 0
   m_Name: RigidbodyPlayerCapsule
   m_TagString: Untagged
@@ -29,67 +33,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 2001132991}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2f9f9e0c2d8a1724f9ec718170d5847d, type: 3}
+  m_Script: {fileID: 11500000, guid: 3f6f87a4b0c04b8f9f7c4b7e0f6d1a21, type: 3}
   m_Name:
   m_EditorClassIdentifier:
   _body: {fileID: 2001132994}
   _capsuleCollider: {fileID: 2001132993}
   _visualRoot: {fileID: 2001132996}
   _gameInput: {fileID: 0}
-  _state:
-    _controlEnabled: 1
-    _grounded: 0
-    _rising: 0
-    _falling: 0
-    _onWalkableSlope: 0
-    _onSteepSlope: 0
-    _sliding: 0
-    _surfaceNormal: {x: 0, y: 1}
-    _slopeAngle: 0
-    _currentState: 1
-  _movement:
-    _maximumGroundSpeed: 8
-    _moveSpeedClampModifier: 0
-    _groundAcceleration: 70
-    _groundDeceleration: 90
-    _slopeAcceleration: 70
-    _slopeDeceleration: 90
-    _airAcceleration: 35
-    _airDeceleration: 25
-    _steepSlopeSlideSpeed: 4
-    _slopeAdherenceSpeed: 1.5
-    _minimumInput: 0.01
-  _jump:
-    _jumpVelocity: 12
-    _maximumJumpVelocity: 12
-    _jumpBufferTime: 0.12
-    _coyoteTime: 0.1
-    _jumpAnticipationDuration: 0.08
-    _groundCheckDelayFixedFrames: 8
-    _enableEarlyRelease: 1
-    _earlyReleaseVelocityMultiplier: 0.5
-  _surfaceProbe:
-    _groundLayers:
-      serializedVersion: 2
-      m_Bits: 51
-    _probeDistance: 0.08
-    _probeInset: 0.04
-    _risingGroundedVelocityThreshold: 0.1
-    _slopeAngleThreshold: 1
-    _maximumWalkableSlopeAngle: 45
-    _steepSlopeJumpRestrictionAngle: 55
-  _externalForces:
-    _horizontalProtectionTime: 0.12
-    _externalForceResistance: 3
-    _settledSpeedThreshold: 0.25
-  _movingPlatforms:
-    _enabled: 1
-  _gravityScale: 3
-  _jumpAscentGravityMultiplier: 1
-  _fallGravityMultiplier: 1.6
-  _maximumFallSpeed: 18
-  _steepSlopeJumpCheckDistance: 0.35
-  _flipVisualWithFacing: 1
+  _playerHandler: {fileID: 990000001}
+  _playerJump: {fileID: 990000002}
+  _playerMovement: {fileID: 990000003}
+  _playerPhysics: {fileID: 990000004}
 --- !u!70 &2001132993
 CapsuleCollider2D:
   m_ObjectHideFlags: 0
@@ -219,3 +173,126 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+
+--- !u!114 &990000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2001132991}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2c8a14f3b7b4b6ca1f7d9e8b4c6a102, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  _characterAnimationController: {fileID: 0}
+  _playerController: {fileID: 2001132992}
+  _playerPhysics: {fileID: 990000004}
+
+--- !u!114 &990000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2001132991}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2c8a14f3b7b4b6ca1f7d9e8b4c6a103, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  _controller: {fileID: 2001132992}
+  _gameInput: {fileID: 0}
+  _jump: 13.3
+  _maxJumpForce: 13.3
+  _jumpBufferDuration: 0.12
+  _coyoteTimeThreshold: 0.1
+  _jumpAnticipationDuration: 0.04
+  _groundedCheckDelay: 5
+  _enableEarlyRelease: 1
+  _earlyReleaseVelocityMultiplier: 0.5
+  _jumpForceClampModifier: 0
+
+--- !u!114 &990000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2001132991}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2c8a14f3b7b4b6ca1f7d9e8b4c6a104, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  _movementSpeed: 8
+  _moveSpeedClampModifier: 0
+  _moveAcceleration: 70
+  _moveDeceleration: 90
+  _slopeMoveAcceleration: 70
+  _slopeMoveDeceleration: 90
+  _airMoveAcceleration: 38
+  _airMoveDeceleration: 40
+  _steepSlopeSlideSpeed: 4
+  _slopeAdherenceSpeed: 1.5
+  _minimumInput: 0.01
+  _floatingMoveAcceleration: 55
+  _floatingMoveDeceleration: 30
+  _floatingMoveSpeedClamp: 18
+  _floatingSpeedClampModifier: 0
+  _floatingExternalVelocity: {x: 0, y: 0}
+  _flipVisualWithFacing: 1
+
+--- !u!114 &990000004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2001132991}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c2c8a14f3b7b4b6ca1f7d9e8b4c6a105, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  _state:
+    _controlEnabled: 1
+    _grounded: 0
+    _rising: 0
+    _falling: 0
+    _onWalkableSlope: 0
+    _onSteepSlope: 0
+    _sliding: 0
+    _surfaceNormal: {x: 0, y: 1}
+    _slopeAngle: 0
+    _currentState: 1
+  _groundPoint: {fileID: 0}
+  _minGroundedDistance: 0.1
+  _platformPersistenceVerticalThreshold: 0.35
+  _platformPersistenceHorizontalPadding: 0.15
+  _surfaceProbe:
+    _groundLayers:
+      serializedVersion: 2
+      m_Bits: 51
+    _probeDistance: 0.08
+    _probeInset: 0.04
+    _risingGroundedVelocityThreshold: 0.1
+    _slopeAngleThreshold: 1
+    _maximumWalkableSlopeAngle: 45
+    _steepSlopeJumpRestrictionAngle: 55
+  _externalForces:
+    _horizontalProtectionTime: 0.12
+    _externalForceResistance: 3
+    _settledSpeedThreshold: 0.25
+  _movingPlatforms:
+    _enabled: 1
+  _gravityScale: 3.4
+  Default_GravityScale: 3.4
+  _baseGravity: 9.81
+  _jumpAscentGravityMultiplier: 1.1
+  _fallGravityMultiplier: 2.1
+  _fallClamp: 22
+  _steepSlopeJumpCheckDistance: 0.35
+  _groundAdhesionForce: 20
+  _slopeAdherenceFactor: 1

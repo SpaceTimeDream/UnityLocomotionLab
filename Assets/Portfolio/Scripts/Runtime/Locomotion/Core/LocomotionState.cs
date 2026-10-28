@@ -23,10 +23,6 @@ namespace Portfolio.Locomotion.Core
     [Serializable]
     public class LocomotionState
     {
-        //------------------------------- Game Pause -------------------------------//
-
-        //------------------------------- Debugging Methods -------------------------------//
-
         //------------------------------- Parameters -------------------------------//
 
         #region Components
@@ -43,7 +39,15 @@ namespace Portfolio.Locomotion.Core
         [SerializeField] private float _slopeAngle;
         [SerializeField] private LocomotionPhysicsState _currentState = LocomotionPhysicsState.Idle;
 
+        #endregion
+
+        #region Flags
+
         private int _transitionCount;
+
+        #endregion
+
+        #region Properties
 
         public bool ControlEnabled => _controlEnabled;
         public bool Grounded => _grounded;
@@ -64,22 +68,6 @@ namespace Portfolio.Locomotion.Core
         public bool IsPushed => HasState(LocomotionPhysicsState.Pushed);
 
         public event Action<LocomotionPhysicsState> StateChanged;
-
-        #endregion
-
-        #region Flags
-
-        #endregion
-
-        //------------------------------- Unity Methods -------------------------------//
-
-        #region Unity
-
-        #endregion
-
-        //------------------------------- Initialization Methods -------------------------------//
-
-        #region Initialization
 
         #endregion
 
@@ -168,8 +156,5 @@ namespace Portfolio.Locomotion.Core
             StateChanged?.Invoke(_currentState);
         }
 
-#if UNITY_EDITOR
-        //------------------------------- Editor -------------------------------//
-#endif
     }
 }

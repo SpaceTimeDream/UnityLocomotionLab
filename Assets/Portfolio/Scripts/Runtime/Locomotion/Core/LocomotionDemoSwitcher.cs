@@ -15,17 +15,10 @@ namespace Portfolio.Locomotion.Core
 
         #region Components
 
-        private const float ControlsPanelHeight = 154f;
-        private const float PhysicsSummaryCollapsedHeight = 104f;
-        private const float PhysicsSummaryExpandedHeight = 236f;
-        private const float ScenarioPromptHeight = 46f;
-        private const float PanelPadding = 12f;
-        private const float HeaderHeight = 28f;
-        private const float ControlRowHeight = 22f;
 
         [Header("COMPONENTS")]
-        [SerializeField] private RigidbodyLocomotionController _rigidbodyController;
-        [SerializeField] private SimulatedSplineLocomotionController _simulatedController;
+        [SerializeField] private PlayerRigidbodyController _rigidbodyController;
+        [SerializeField] private PlayerSimulatedController _simulatedController;
         [SerializeField] private BasicCameraFollow2D _cameraFollow;
         [SerializeField] private GameInput _gameInput;
 
@@ -33,6 +26,8 @@ namespace Portfolio.Locomotion.Core
         [SerializeField] private bool _startWithRigidbody = true;
         [SerializeField] private Color _rigidbodyColor = new Color(0.15f, 1f, 0f, 1f);
         [SerializeField] private Color _simulatedColor = new Color(1f, 0.55f, 0.2f, 1f);
+        [SerializeField] private bool _debugTintCharacterSprites = true;
+        [SerializeField, Range(0f, 1f)] private float _debugSpriteTintStrength = 0.22f;
 
         [Header("PRESENTATION PARAMETERS")]
         [SerializeField] private bool _showControlsPanel = true;
@@ -41,12 +36,34 @@ namespace Portfolio.Locomotion.Core
         [SerializeField] private bool _showPlayerPhysicsLabel = true;
         [SerializeField] private bool _physicsSummaryStartsExpanded;
         [SerializeField] private float _screenMargin = 16f;
-        [SerializeField] private float _controlsPanelWidth = 320f;
-        [SerializeField] private float _physicsPanelWidth = 370f;
-        [SerializeField] private float _playerLabelWidth = 220f;
-        [SerializeField] private float _playerLabelHeight = 30f;
+        [SerializeField] private float _controlsPanelWidth = 360f;
+        [SerializeField] private float _physicsPanelWidth = 440f;
+        [SerializeField] private float _playerLabelWidth = 240f;
+        [SerializeField] private float _playerLabelHeight = 32f;
         [SerializeField] private Vector2 _playerLabelWorldOffset =
             new Vector2(0f, 0.3f);
+
+        [Header("HUD LAYOUT")]
+        [SerializeField, Min(1f)] private float _controlsPanelHeight = 242f;
+        [SerializeField, Min(1f)] private float _physicsSummaryCollapsedHeight = 148f;
+        [SerializeField, Min(1f)] private float _physicsSummaryExpandedHeight = 390f;
+        [SerializeField, Min(1f)] private float _scenarioPromptHeight = 78f;
+        [SerializeField, Min(0f)] private float _panelPadding = 14f;
+        [SerializeField, Min(1f)] private float _headerHeight = 34f;
+        [SerializeField, Min(1f)] private float _controlRowHeight = 29f;
+
+        [Header("HUD FONT SIZES")]
+        [SerializeField, Min(1)] private int _headerFontSize = 17;
+        [SerializeField, Min(1)] private int _bodyFontSize = 14;
+        [SerializeField, Min(1)] private int _captionFontSize = 12;
+        [SerializeField, Min(1)] private int _controlBindingFontSize = 13;
+        [SerializeField, Min(1)] private int _foldoutFontSize = 14;
+        [SerializeField, Min(1)] private int _scenarioFontSize = 14;
+        [SerializeField, Min(1)] private int _sectionFontSize = 12;
+        [SerializeField, Min(1)] private int _promptTitleFontSize = 14;
+        [SerializeField, Min(1)] private int _promptBodyFontSize = 13;
+        [SerializeField, Min(1)] private int _playerLabelFontSize = 14;
+        [SerializeField, Min(1)] private int _courseGizmoFontSize = 14;
 
         [Header("COURSE GIZMO PARAMETERS")]
         [SerializeField] private bool _drawCourseGizmos = true;
@@ -69,6 +86,17 @@ namespace Portfolio.Locomotion.Core
         private GUIStyle _foldoutStyle;
         private GUIStyle _scenarioStyle;
         private GUIStyle _playerLabelStyle;
+        private GUIStyle _sectionStyle;
+        private GUIStyle _promptTitleStyle;
+        private GUIStyle _promptBodyStyle;
+        private Texture2D _panelTexture;
+        private Texture2D _accentTexture;
+        private Texture2D _scenarioTexture;
+        private SpriteRenderer[] _rigidbodySpriteRenderers;
+        private SpriteRenderer[] _simulatedSpriteRenderers;
+        private Color[] _rigidbodyOriginalSpriteColors;
+        private Color[] _simulatedOriginalSpriteColors;
+        private bool _spriteColorsCached;
 
         public Transform ActivePlayer => _activePlayer;
         public bool RigidbodyActive => _rigidbodyActive;
@@ -93,6 +121,11 @@ namespace Portfolio.Locomotion.Core
             Initialize();
         }
 
+        private void LateUpdate()
+        {
+            ApplyPlayerColors();
+        }
+
         private void OnGUI()
         {
             if (!_initialized || !Application.isPlaying)
@@ -110,6 +143,26 @@ namespace Portfolio.Locomotion.Core
         private void OnDestroy()
         {
             UnsubscribeEvents();
+            DestroyGuiTexture(_panelTexture);
+            DestroyGuiTexture(_accentTexture);
+            DestroyGuiTexture(_scenarioTexture);
+        }
+
+        private void DestroyGuiTexture(Texture2D texture)
+        {
+            if (texture == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(texture);
+            }
+            else
+            {
+                DestroyImmediate(texture);
+            }
         }
 
         #endregion
@@ -120,17 +173,12 @@ namespace Portfolio.Locomotion.Core
 
         private void Initialize()
         {
-            InitializeModules();
             InitializeComponents();
             InitializeEvents();
-            ApplyPlayerColors();
             _physicsSummaryExpanded = _physicsSummaryStartsExpanded;
             SetActivePlayer(_startWithRigidbody, false);
+            ApplyPlayerColors();
             _initialized = true;
-        }
-
-        private void InitializeModules()
-        {
         }
 
         private void InitializeComponents()
@@ -205,6 +253,13 @@ namespace Portfolio.Locomotion.Core
             CapsuleCollider2D outgoingCollider = GetPlayerCollider(!useRigidbody);
             Vector3 transferPositionVector =
                 GetTransferPosition(outgoingPlayer, outgoingCollider);
+            float facingDirection = !_initialized
+                ? (useRigidbody
+                    ? _rigidbodyController.FacingDirection
+                    : _simulatedController.FacingDirection)
+                : (_rigidbodyActive
+                    ? _rigidbodyController.FacingDirection
+                    : _simulatedController.FacingDirection);
 
             SetPlayerControl(!useRigidbody, false);
             SetPlayerActive(!useRigidbody, false);
@@ -222,6 +277,15 @@ namespace Portfolio.Locomotion.Core
             }
 
             ResetPlayer(useRigidbody);
+            if (useRigidbody)
+            {
+                _rigidbodyController.SetFacingDirection(facingDirection);
+            }
+            else
+            {
+                _simulatedController.SetFacingDirection(facingDirection);
+            }
+
             SetPlayerControl(useRigidbody, true);
             _rigidbodyActive = useRigidbody;
             _activePlayer = incomingPlayer;
@@ -319,23 +383,60 @@ namespace Portfolio.Locomotion.Core
 
         private void ApplyPlayerColors()
         {
-            ApplyPlayerColor(_rigidbodyController, _rigidbodyColor);
-            ApplyPlayerColor(_simulatedController, _simulatedColor);
-        }
-
-        private void ApplyPlayerColor(Component controller, Color color)
-        {
-            if (controller == null)
+            if (!_spriteColorsCached ||
+                (_rigidbodySpriteRenderers.Length == 0 && _simulatedSpriteRenderers.Length == 0))
             {
-                return;
+                Transform rigidbodyVisualRoot = _rigidbodyController != null
+                    ? _rigidbodyController.VisualRoot
+                    : null;
+                Transform simulatedVisualRoot = _simulatedController != null
+                    ? _simulatedController.VisualRoot
+                    : null;
+                _rigidbodySpriteRenderers = rigidbodyVisualRoot != null
+                    ? rigidbodyVisualRoot.GetComponentsInChildren<SpriteRenderer>(true)
+                    : System.Array.Empty<SpriteRenderer>();
+                _simulatedSpriteRenderers = simulatedVisualRoot != null
+                    ? simulatedVisualRoot.GetComponentsInChildren<SpriteRenderer>(true)
+                    : System.Array.Empty<SpriteRenderer>();
+                _rigidbodyOriginalSpriteColors = CacheSpriteColors(_rigidbodySpriteRenderers);
+                _simulatedOriginalSpriteColors = CacheSpriteColors(_simulatedSpriteRenderers);
+                _spriteColorsCached = true;
             }
 
-            SpriteRenderer spriteRenderer =
-                controller.GetComponentInChildren<SpriteRenderer>(true);
+            ApplyPlayerColor(_rigidbodySpriteRenderers, _rigidbodyOriginalSpriteColors, _rigidbodyColor);
+            ApplyPlayerColor(_simulatedSpriteRenderers, _simulatedOriginalSpriteColors, _simulatedColor);
+        }
 
-            if (spriteRenderer != null)
+        private Color[] CacheSpriteColors(SpriteRenderer[] spriteRenderers)
+        {
+            Color[] colors = new Color[spriteRenderers.Length];
+
+            for (int i = 0; i < spriteRenderers.Length; i++)
             {
-                spriteRenderer.color = color;
+                colors[i] = spriteRenderers[i] != null ? spriteRenderers[i].color : Color.white;
+            }
+
+            return colors;
+        }
+
+        private void ApplyPlayerColor(
+            SpriteRenderer[] spriteRenderers,
+            Color[] originalColors,
+            Color tintColor)
+        {
+            for (int i = 0; i < spriteRenderers.Length; i++)
+            {
+                SpriteRenderer spriteRenderer = spriteRenderers[i];
+
+                if (spriteRenderer == null)
+                {
+                    continue;
+                }
+
+                Color originalColor = originalColors[i];
+                spriteRenderer.color = _debugTintCharacterSprites
+                    ? Color.Lerp(originalColor, new Color(tintColor.r, tintColor.g, tintColor.b, originalColor.a), _debugSpriteTintStrength)
+                    : originalColor;
             }
         }
 
@@ -346,66 +447,111 @@ namespace Portfolio.Locomotion.Core
                 return;
             }
 
+            _panelTexture = CreateTexture(new Color(0.035f, 0.05f, 0.075f, 0.96f));
+            _accentTexture = CreateTexture(new Color(0.14f, 0.2f, 0.29f, 1f));
+            _scenarioTexture = CreateTexture(Color.white);
             _panelStyle = new GUIStyle(GUI.skin.box)
             {
                 padding = new RectOffset(
-                    (int)PanelPadding,
-                    (int)PanelPadding,
-                    (int)PanelPadding,
-                    (int)PanelPadding)
+                    (int)_panelPadding,
+                    (int)_panelPadding,
+                    (int)_panelPadding,
+                    (int)_panelPadding),
+                border = new RectOffset(8, 8, 8, 8),
+                normal = { background = _panelTexture }
             };
             _headerStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.MiddleLeft,
-                fontSize = 14,
-                fontStyle = FontStyle.Bold
+                fontSize = _headerFontSize,
+                fontStyle = FontStyle.Bold,
+                clipping = TextClipping.Clip
             };
             _headerStyle.normal.textColor = Color.white;
             _bodyStyle = new GUIStyle(GUI.skin.label)
             {
                 alignment = TextAnchor.UpperLeft,
-                fontSize = 12,
+                fontSize = _bodyFontSize,
                 wordWrap = true
             };
-            _bodyStyle.normal.textColor = new Color(0.92f, 0.95f, 1f, 1f);
+            _bodyStyle.normal.textColor = new Color(0.88f, 0.91f, 0.96f, 1f);
+            _bodyStyle.padding = new RectOffset(2, 2, 2, 2);
             _captionStyle = new GUIStyle(_bodyStyle)
             {
                 alignment = TextAnchor.MiddleRight
             };
-            _captionStyle.normal.textColor = new Color(0.72f, 0.76f, 0.82f, 1f);
+            _captionStyle.normal.textColor = new Color(0.62f, 0.69f, 0.79f, 1f);
+            _captionStyle.fontSize = _captionFontSize;
             _controlBindingStyle = new GUIStyle(_bodyStyle)
             {
                 alignment = TextAnchor.MiddleLeft,
                 fontStyle = FontStyle.Bold
             };
             _controlBindingStyle.normal.textColor =
-                new Color(0.65f, 0.85f, 1f, 1f);
+                new Color(0.76f, 0.87f, 1f, 1f);
+            _controlBindingStyle.fontSize = _controlBindingFontSize;
             _foldoutStyle = new GUIStyle(GUI.skin.button)
             {
                 alignment = TextAnchor.MiddleLeft,
-                fontSize = 13,
+                fontSize = _foldoutFontSize,
                 fontStyle = FontStyle.Bold,
                 padding = new RectOffset(10, 10, 4, 4)
             };
-            _foldoutStyle.normal.textColor = Color.black;
-            _foldoutStyle.hover.textColor = Color.black;
-            _foldoutStyle.active.textColor = Color.black;
+            _foldoutStyle.normal.background = _accentTexture;
+            _foldoutStyle.hover.background = _accentTexture;
+            _foldoutStyle.active.background = _accentTexture;
+            _foldoutStyle.normal.textColor = Color.white;
+            _foldoutStyle.hover.textColor = Color.white;
+            _foldoutStyle.active.textColor = Color.white;
             _scenarioStyle = new GUIStyle(GUI.skin.box)
             {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 13,
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = _scenarioFontSize,
                 fontStyle = FontStyle.Bold,
+                wordWrap = true,
+                padding = new RectOffset(14, 14, 8, 8),
+                normal = { background = _panelTexture }
+            };
+            _scenarioStyle.normal.textColor = Color.white;
+            _sectionStyle = new GUIStyle(_captionStyle)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontStyle = FontStyle.Bold,
+                fontSize = _sectionFontSize
+            };
+            _promptTitleStyle = new GUIStyle(_headerStyle)
+            {
+                fontSize = _promptTitleFontSize,
+                alignment = TextAnchor.MiddleLeft
+            };
+            _promptBodyStyle = new GUIStyle(_bodyStyle)
+            {
+                fontSize = _promptBodyFontSize,
                 wordWrap = true
             };
-            _scenarioStyle.normal.textColor = new Color(0.04f, 0.05f, 0.07f, 1f);
             _playerLabelStyle = new GUIStyle(GUI.skin.box)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 12,
+                fontSize = _playerLabelFontSize,
                 fontStyle = FontStyle.Bold
             };
-            _playerLabelStyle.normal.textColor = Color.black;
+            _playerLabelStyle.normal.background = _panelTexture;
+            _playerLabelStyle.normal.textColor = Color.white;
             _guiStylesInitialized = true;
+        }
+
+        private void ApplyGuiFontSizes()
+        {
+            if (_headerStyle != null) _headerStyle.fontSize = _headerFontSize;
+            if (_bodyStyle != null) _bodyStyle.fontSize = _bodyFontSize;
+            if (_captionStyle != null) _captionStyle.fontSize = _captionFontSize;
+            if (_controlBindingStyle != null) _controlBindingStyle.fontSize = _controlBindingFontSize;
+            if (_foldoutStyle != null) _foldoutStyle.fontSize = _foldoutFontSize;
+            if (_scenarioStyle != null) _scenarioStyle.fontSize = _scenarioFontSize;
+            if (_sectionStyle != null) _sectionStyle.fontSize = _sectionFontSize;
+            if (_promptTitleStyle != null) _promptTitleStyle.fontSize = _promptTitleFontSize;
+            if (_promptBodyStyle != null) _promptBodyStyle.fontSize = _promptBodyFontSize;
+            if (_playerLabelStyle != null) _playerLabelStyle.fontSize = _playerLabelFontSize;
         }
 
         private void DrawControlsPanel()
@@ -416,35 +562,112 @@ namespace Portfolio.Locomotion.Core
             }
 
             Rect panelRect = GetControlsPanelRect();
-            DrawTintedBox(panelRect, new Color(0.08f, 0.11f, 0.17f, 0.95f));
+            DrawTintedBox(panelRect, new Color(0.035f, 0.05f, 0.075f, 0.96f));
             GUI.Label(
                 new Rect(
-                    panelRect.x + PanelPadding,
-                    panelRect.y + PanelPadding,
-                    panelRect.width - PanelPadding * 2f,
-                    HeaderHeight),
-                "CONTROLS",
+                    panelRect.x + _panelPadding,
+                    panelRect.y + _panelPadding,
+                    panelRect.width - _panelPadding * 2f,
+                    _headerHeight),
+                "CONTROLS  ·  " + GetCurrentControlSchemeLabel(),
                 _headerStyle);
-            DrawControlRow(
-                panelRect,
-                0,
-                "A / D  ·  Left Stick",
-                "Move");
-            DrawControlRow(
-                panelRect,
-                1,
-                "Space  ·  South",
-                "Jump");
-            DrawControlRow(
-                panelRect,
-                2,
-                "Tab  ·  Select",
-                "Switch Physics");
-            DrawControlRow(
-                panelRect,
-                3,
-                "Esc  ·  Start",
-                "Pause");
+            DrawControlRow(panelRect, 0, GetControlBinding("Move"), "Move");
+            DrawControlRow(panelRect, 1, GetControlBinding("Jump"), "Jump");
+            DrawControlRow(panelRect, 2, GetControlBinding("Switch Physics"), "Switch Physics");
+            DrawControlRow(panelRect, 3, GetControlBinding("Attack"), "Attack");
+            DrawControlRow(panelRect, 4, GetControlBinding("Look Up"), "Look Up");
+            DrawControlRow(panelRect, 5, GetControlBinding("Pause"), "Pause");
+
+            string unassignedButtonLabel = GetUnassignedFaceButtonLabel();
+            if (!string.IsNullOrEmpty(unassignedButtonLabel))
+            {
+                GUI.Label(
+                    new Rect(
+                        panelRect.x + _panelPadding,
+                        panelRect.y + _panelPadding + _headerHeight + 6f * _controlRowHeight,
+                        panelRect.width - _panelPadding * 2f,
+                        18f),
+                    unassignedButtonLabel,
+                    _sectionStyle);
+            }
+        }
+
+        private string GetUnassignedFaceButtonLabel()
+        {
+            string device = _gameInput != null
+                ? _gameInput.GetCurrentDevice()
+                : GameInput.KEYBOARD;
+
+            if (device == GameInput.DUALSENSE || device == GameInput.DUALSHOCK)
+            {
+                return "Circle · Unassigned";
+            }
+
+            if (device == GameInput.GAMEPAD)
+            {
+                return "East Button · Unassigned";
+            }
+
+            return string.Empty;
+        }
+
+        private string GetCurrentControlSchemeLabel()
+        {
+            string device = _gameInput != null
+                ? _gameInput.GetCurrentDevice()
+                : GameInput.KEYBOARD;
+
+            if (device == GameInput.MOUSE || device == GameInput.KEYBOARD)
+            {
+                return "KEYBOARD & MOUSE";
+            }
+
+            return device.ToUpperInvariant();
+        }
+
+        private string GetControlBinding(string action)
+        {
+            string device = _gameInput != null
+                ? _gameInput.GetCurrentDevice()
+                : GameInput.KEYBOARD;
+            bool keyboardMouse = device == GameInput.MOUSE || device == GameInput.KEYBOARD;
+
+            if (keyboardMouse)
+            {
+                switch (action)
+                {
+                    case "Move": return "A / D";
+                    case "Jump": return "Space";
+                    case "Switch Physics": return "Tab";
+                    case "Attack": return "Left Mouse";
+                    case "Look Up": return "W";
+                    case "Pause": return "Esc";
+                }
+            }
+
+            if (device == GameInput.DUALSENSE || device == GameInput.DUALSHOCK)
+            {
+                switch (action)
+                {
+                    case "Move": return "Left Stick / D-pad";
+                    case "Jump": return "X";
+                    case "Switch Physics": return "Triangle";
+                    case "Attack": return "Square";
+                    case "Look Up": return "Right Stick ↑";
+                    case "Pause": return device == GameInput.DUALSENSE ? "Options" : "Options / Start";
+                }
+            }
+
+            switch (action)
+            {
+                case "Move": return "Left Stick / D-pad";
+                case "Jump": return "South Button";
+                case "Switch Physics": return "North Button";
+                case "Attack": return "West Button";
+                case "Look Up": return "Right Stick ↑";
+                case "Pause": return "Start Button";
+                default: return string.Empty;
+            }
         }
 
         private void DrawControlRow(
@@ -455,21 +678,21 @@ namespace Portfolio.Locomotion.Core
         {
             float rowY =
                 panelRect.y +
-                PanelPadding +
-                HeaderHeight +
-                rowIndex * ControlRowHeight;
-            float contentWidth = panelRect.width - PanelPadding * 2f;
+                _panelPadding +
+                _headerHeight +
+                rowIndex * _controlRowHeight;
+            float contentWidth = panelRect.width - _panelPadding * 2f;
             float bindingWidth = contentWidth * 0.63f;
             Rect bindingRect = new Rect(
-                panelRect.x + PanelPadding,
+                panelRect.x + _panelPadding,
                 rowY,
                 bindingWidth,
-                ControlRowHeight);
+                _controlRowHeight);
             Rect actionRect = new Rect(
                 bindingRect.xMax,
                 rowY,
                 contentWidth - bindingWidth,
-                ControlRowHeight);
+                _controlRowHeight);
             GUI.Label(bindingRect, bindings, _controlBindingStyle);
             GUI.Label(actionRect, action, _captionStyle);
         }
@@ -489,12 +712,12 @@ namespace Portfolio.Locomotion.Core
             }
 
             Rect panelRect = GetPhysicsSummaryRect();
-            DrawTintedBox(panelRect, new Color(0.08f, 0.11f, 0.17f, 0.95f));
+            DrawTintedBox(panelRect, new Color(0.035f, 0.05f, 0.075f, 0.96f));
             Rect headerRect = new Rect(
-                panelRect.x + PanelPadding,
-                panelRect.y + PanelPadding,
-                panelRect.width - PanelPadding * 2f,
-                HeaderHeight);
+                panelRect.x + _panelPadding,
+                panelRect.y + _panelPadding,
+                panelRect.width - _panelPadding * 2f,
+                _headerHeight);
             Color previousBackgroundColor = GUI.backgroundColor;
             GUI.backgroundColor = GetActivePhysicsColor();
 
@@ -510,10 +733,10 @@ namespace Portfolio.Locomotion.Core
 
             GUI.backgroundColor = previousBackgroundColor;
             Rect detailsRect = new Rect(
-                panelRect.x + PanelPadding,
+                panelRect.x + _panelPadding,
                 headerRect.yMax + 8f,
-                panelRect.width - PanelPadding * 2f,
-                panelRect.height - HeaderHeight - PanelPadding * 2f - 8f);
+                panelRect.width - _panelPadding * 2f,
+                panelRect.height - _headerHeight - _panelPadding * 2f - 8f);
             GUI.Label(
                 detailsRect,
                 _physicsSummaryExpanded
@@ -530,13 +753,22 @@ namespace Portfolio.Locomotion.Core
             }
 
             Rect promptRect = GetCoursePromptRect();
-            Color previousBackgroundColor = GUI.backgroundColor;
-            GUI.backgroundColor = GetCurrentScenarioColor(_activePlayer.position.x);
-            GUI.Box(
-                promptRect,
-                GetCurrentScenarioPrompt(_activePlayer.position.x),
-                _scenarioStyle);
-            GUI.backgroundColor = previousBackgroundColor;
+            float positionX = _activePlayer.position.x;
+            Color scenarioColor = GetCurrentScenarioColor(positionX);
+            DrawTintedBox(promptRect, new Color(0.035f, 0.05f, 0.075f, 0.96f));
+            GUI.color = scenarioColor;
+            GUI.DrawTexture(
+                new Rect(promptRect.x, promptRect.y, 4f, promptRect.height),
+                _scenarioTexture);
+            GUI.color = Color.white;
+            GUI.Label(
+                new Rect(promptRect.x + 16f, promptRect.y + 7f, promptRect.width - 28f, 18f),
+                "CURRENT TEST  /  " + GetCurrentScenarioName(positionX),
+                _promptTitleStyle);
+            GUI.Label(
+                new Rect(promptRect.x + 16f, promptRect.y + 27f, promptRect.width - 28f, promptRect.height - 32f),
+                GetCurrentScenarioPrompt(positionX),
+                _promptBodyStyle);
         }
 
         private void DrawPlayerPhysicsLabel()
@@ -608,6 +840,30 @@ namespace Portfolio.Locomotion.Core
             GUI.backgroundColor = previousBackgroundColor;
         }
 
+        private Texture2D CreateTexture(Color color)
+        {
+            Texture2D texture = new Texture2D(1, 1)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            texture.SetPixel(0, 0, color);
+            texture.Apply();
+            return texture;
+        }
+
+        private string GetCurrentScenarioName(float positionX)
+        {
+            if (positionX < _runwayRange.y) return "ACCELERATION & BRAKING";
+            if (positionX < _rollingSlopeRange.y) return "SLOPE CONTROL";
+            if (positionX < _uphillJumpRange.y) return "UPHILL JUMP";
+            if (positionX < _lowCeilingRange.y) return "LOW CEILING";
+            if (positionX < _jumpableStepRange.y) return "JUMPABLE STEP";
+            if (positionX < _steepSlopeRange.y) return "STEEP SLOPE";
+            return "COURSE REPEAT";
+        }
+
         private Rect GetControlsPanelRect()
         {
             float width = Mathf.Min(
@@ -617,7 +873,7 @@ namespace Portfolio.Locomotion.Core
                 _screenMargin,
                 _screenMargin,
                 width,
-                ControlsPanelHeight);
+                _controlsPanelHeight);
         }
 
         private Rect GetPhysicsSummaryRect()
@@ -634,8 +890,8 @@ namespace Portfolio.Locomotion.Core
                 ? GetControlsPanelRect().yMax + _screenMargin
                 : _screenMargin;
             float height = _physicsSummaryExpanded
-                ? PhysicsSummaryExpandedHeight
-                : PhysicsSummaryCollapsedHeight;
+                ? _physicsSummaryExpandedHeight
+                : _physicsSummaryCollapsedHeight;
             return new Rect(
                 Screen.width - _screenMargin - width,
                 y,
@@ -657,14 +913,14 @@ namespace Portfolio.Locomotion.Core
                     left,
                     _screenMargin,
                     availableWidth,
-                    ScenarioPromptHeight);
+                    _scenarioPromptHeight);
             }
 
             return new Rect(
                 _screenMargin,
                 Mathf.Max(controlsRect.yMax, physicsRect.yMax) + _screenMargin,
                 Screen.width - _screenMargin * 2f,
-                ScenarioPromptHeight);
+                _scenarioPromptHeight);
         }
 
         private LocomotionState GetActiveState()
@@ -684,28 +940,66 @@ namespace Portfolio.Locomotion.Core
         private string GetCollapsedPhysicsText(LocomotionState state)
         {
             Vector2 velocity = GetActiveVelocity();
+            float movementInput = _rigidbodyActive
+                ? _rigidbodyController.MovementInput
+                : _simulatedController.MovementInput;
             return
                 $"{GetActivePhysicsLabel()}\n" +
-                $"{GetSurfaceSummary(state)}  ·  Jump {GetActiveJumpState()}\n" +
-                $"Velocity  X {velocity.x:0.00}  Y {velocity.y:0.00}";
+                $"{GetSurfaceSummary(state)}  ·  Slope {state.SlopeAngle:0.0}°\n" +
+                $"Velocity  X {velocity.x:0.00}  Y {velocity.y:0.00}  ·  Speed {velocity.magnitude:0.00}\n" +
+                $"Input {movementInput:0.00}  ·  Jump {GetActiveJumpState()}  ·  Control {(state.ControlEnabled ? "Enabled" : "Disabled")}";
         }
 
         private string GetExpandedPhysicsText(LocomotionState state)
         {
             Vector2 velocity = GetActiveVelocity();
-            float movementInput = _gameInput != null
-                ? _gameInput.MovementValue.x
-                : 0f;
+            float movementInput = _rigidbodyActive
+                ? _rigidbodyController.MovementInput
+                : _simulatedController.MovementInput;
+            float facingDirection = _rigidbodyActive
+                ? _rigidbodyController.FacingDirection
+                : _simulatedController.FacingDirection;
+            float horizontalDistancePerFixedFrame = _rigidbodyActive
+                ? _rigidbodyController.HorizontalDistancePerFixedFrame
+                : _simulatedController.HorizontalDistancePerFixedFrame;
+            float jumpBufferRemainingTime = _rigidbodyActive
+                ? _rigidbodyController.Jump.JumpBufferRemainingTime
+                : _simulatedController.Jump.JumpBufferRemainingTime;
+            float coyoteRemainingTime = _rigidbodyActive
+                ? _rigidbodyController.Jump.CoyoteRemainingTime
+                : _simulatedController.Jump.CoyoteRemainingTime;
+
             return
                 $"{GetActivePhysicsLabel()}\n" +
                 $"Motion  {GetActiveMotionDescription()}\n" +
                 $"Collision  {GetActiveCollisionDescription()}\n" +
-                $"Surface  {GetSurfaceSummary(state)}\n" +
-                $"Normal  X {state.SurfaceNormal.x:0.00}  " +
-                $"Y {state.SurfaceNormal.y:0.00}\n" +
-                $"Velocity  X {velocity.x:0.00}  Y {velocity.y:0.00}\n" +
-                $"Input  X {movementInput:0.00}  Jump {GetActiveJumpState()}\n" +
-                $"State  {state.CurrentState}";
+                $"Surface  {GetSurfaceSummary(state)}  ·  Slope {state.SlopeAngle:0.0}°\n" +
+                $"Normal  X {state.SurfaceNormal.x:0.00}  Y {state.SurfaceNormal.y:0.00}\n" +
+                $"Velocity  X {velocity.x:0.00}  Y {velocity.y:0.00}  ·  Speed {velocity.magnitude:0.00}\n" +
+                $"Input  {movementInput:0.00}  ·  Facing {facingDirection:0.0}  ·  ΔX/fixed {horizontalDistancePerFixedFrame:0.000}\n" +
+                $"Jump {GetActiveJumpState()}  ·  Buffer {jumpBufferRemainingTime:0.000}s  ·  Coyote {coyoteRemainingTime:0.000}s\n" +
+                $"{GetActiveGroundContactSummary()}\n" +
+                $"Control {(state.ControlEnabled ? "Enabled" : "Disabled")}  ·  State {state.CurrentState}\n" +
+                $"State transitions {state.TransitionCount}";
+        }
+
+        private string GetActiveGroundContactSummary()
+        {
+            if (_rigidbodyActive)
+            {
+                PlayerRigidbodyPhysics physics = _rigidbodyController.PlayerRigidbodyPhysics;
+                string contactName = physics != null && physics.GroundContactObject != null
+                    ? physics.GroundContactObject.name
+                    : "None";
+                float groundedTime = physics != null ? physics.GroundedTime : 0f;
+                return $"Ground time {groundedTime:0.00}s  ·  Contact {contactName}";
+            }
+
+            Vector2 intended = _simulatedController.LastIntendedDisplacement;
+            Vector2 resolved = _simulatedController.LastResolvedDisplacement;
+            return
+                $"Step intended  X {intended.x:0.000}  Y {intended.y:0.000}\n" +
+                $"Step resolved  X {resolved.x:0.000}  Y {resolved.y:0.000}  ·  Steep-slope block {_simulatedController.MovementBlockedBySteepSlope}";
         }
 
         private string GetActivePhysicsLabel()
@@ -923,9 +1217,24 @@ namespace Portfolio.Locomotion.Core
             Gizmos.DrawCube(center, size);
             Gizmos.color = color;
             Gizmos.DrawWireCube(center, size);
+            GUIStyle labelStyle = new GUIStyle(UnityEditor.EditorStyles.boldLabel)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = _courseGizmoFontSize,
+                normal = { textColor = Color.white },
+                padding = new RectOffset(8, 8, 4, 4)
+            };
+            UnityEditor.Handles.color = color;
+            UnityEditor.Handles.DrawLine(
+                new Vector3(range.x, _courseGizmoY - _courseGizmoHeight, 0f),
+                new Vector3(range.x, _courseGizmoY + _courseGizmoHeight, 0f));
+            UnityEditor.Handles.DrawLine(
+                new Vector3(range.y, _courseGizmoY - _courseGizmoHeight, 0f),
+                new Vector3(range.y, _courseGizmoY + _courseGizmoHeight, 0f));
             UnityEditor.Handles.Label(
-                center + Vector3.up * (_courseGizmoHeight + 0.15f),
-                label);
+                center + Vector3.up * (_courseGizmoHeight + 0.2f),
+                label,
+                labelStyle);
         }
 
         private void OnValidate()
@@ -935,7 +1244,39 @@ namespace Portfolio.Locomotion.Core
             _physicsPanelWidth = Mathf.Max(260f, _physicsPanelWidth);
             _playerLabelWidth = Mathf.Max(140f, _playerLabelWidth);
             _playerLabelHeight = Mathf.Max(24f, _playerLabelHeight);
+            _controlsPanelHeight = Mathf.Max(1f, _controlsPanelHeight);
+            _physicsSummaryCollapsedHeight = Mathf.Max(1f, _physicsSummaryCollapsedHeight);
+            _physicsSummaryExpandedHeight = Mathf.Max(
+                _physicsSummaryCollapsedHeight,
+                _physicsSummaryExpandedHeight);
+            _scenarioPromptHeight = Mathf.Max(1f, _scenarioPromptHeight);
+            _panelPadding = Mathf.Max(0f, _panelPadding);
+            _headerHeight = Mathf.Max(1f, _headerHeight);
+            _controlRowHeight = Mathf.Max(1f, _controlRowHeight);
+            _headerFontSize = Mathf.Max(1, _headerFontSize);
+            _bodyFontSize = Mathf.Max(1, _bodyFontSize);
+            _captionFontSize = Mathf.Max(1, _captionFontSize);
+            _controlBindingFontSize = Mathf.Max(1, _controlBindingFontSize);
+            _foldoutFontSize = Mathf.Max(1, _foldoutFontSize);
+            _scenarioFontSize = Mathf.Max(1, _scenarioFontSize);
+            _sectionFontSize = Mathf.Max(1, _sectionFontSize);
+            _promptTitleFontSize = Mathf.Max(1, _promptTitleFontSize);
+            _promptBodyFontSize = Mathf.Max(1, _promptBodyFontSize);
+            _playerLabelFontSize = Mathf.Max(1, _playerLabelFontSize);
+            _courseGizmoFontSize = Mathf.Max(1, _courseGizmoFontSize);
             _courseGizmoHeight = Mathf.Max(0.05f, _courseGizmoHeight);
+
+            if (_panelStyle != null)
+            {
+                _panelStyle.padding = new RectOffset(
+                    Mathf.RoundToInt(_panelPadding),
+                    Mathf.RoundToInt(_panelPadding),
+                    Mathf.RoundToInt(_panelPadding),
+                    Mathf.RoundToInt(_panelPadding));
+            }
+
+            ApplyGuiFontSizes();
+
             NormalizeRange(ref _runwayRange);
             NormalizeRange(ref _rollingSlopeRange);
             NormalizeRange(ref _uphillJumpRange);

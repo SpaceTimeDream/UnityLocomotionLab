@@ -1,111 +1,54 @@
-# UnityLocomotionLab
+# Unity Locomotion Lab
 
-UnityLocomotionLab is a focused Unity 2D locomotion project created to demonstrate modular gameplay programming, collision handling, slope movement, and player-state architecture.
+A Unity 2D character-controller showcase comparing Rigidbody-driven locomotion with a simulated-translate implementation. The project also includes shared input handling, character animation integration, camera following, and PlayStation controller feedback components.
 
-The main demo compares two locomotion implementations over the same test course:
+## Project setup
 
-- **Rigidbody Physics** — dynamic `Rigidbody2D` movement using velocity and Unity gravity.
-- **Simulated Physics** — transform-driven movement using calculated gravity, kinematic contact data, and capsule sweeps.
+- **Unity:** `6000.5.4f1`
+- **Main scene:** `Assets/Portfolio/Scenes/LocomotionComparisonDemo.unity`
+- **Player prefabs:**
+  - `Assets/Portfolio/Prefabs/Locomotion/RigidbodyPlayerCapsule.prefab`
+  - `Assets/Portfolio/Prefabs/Locomotion/SimulatedPlayerCapsule.prefab`
 
-**Status:** Portfolio showcase — ongoing development.
+Open the comparison scene and enter Play Mode to compare the two locomotion approaches on the same traversal course. The scene includes acceleration/braking space, slopes, a low ceiling, a jumpable step, and steep-slope transitions.
 
-This repository will continue to grow with additional locomotion experiments, test scenarios, debugging tools, documentation, and presentation improvements.
+## Locomotion implementations
 
-## Highlights
+**Rigidbody player** uses a dynamic `Rigidbody2D` with separate controller, handler, movement, jump, and physics components. Its movement is driven by Unity's Rigidbody velocity and gravity.
 
-- Modular separation between input, controllers, movement, jumping, surface detection, collision resolution, and locomotion state.
-- Ground, wall, ceiling, walkable-slope, and steep-slope handling.
-- Acceleration, deceleration, slope movement, air control, and momentum preservation.
-- Coyote time, jump buffering, variable jump height, early release, and uphill jumping.
-- Directional steep-slope blocking while allowing movement and jumping away.
-- Moving-platform synchronization and external-force handling.
-- Keyboard and gamepad support through Unity's Input System.
-- Runtime physics summaries, contextual test prompts, player labels, custom inspector diagnostics, and scene gizmos.
-- Camera follow independent of the player’s visual facing rotation.
-- Runtime switching between physics models while preserving the player’s position.
+**Simulated player** calculates and owns its velocity and resolves its intended displacement before translating the transform. A kinematic `Rigidbody2D` and capsule collider provide contacts and collision-query geometry; Rigidbody velocity and gravity do not drive the movement.
 
-## Comparison Demo
-
-Open:
-
-`Assets/Portfolio/Scenes/LocomotionComparisonDemo.unity`
-
-The course includes several focused test scenarios:
-
-1. Long runway for acceleration, deceleration, and stopping distance.
-2. Rolling slopes for testing grounded movement and unwanted sliding.
-3. Uphill sections for testing slope momentum and jumping.
-4. Low ceiling for head collisions and early jump release.
-5. Raised step for obstacle-clearing tests.
-6. Steep end slopes for directional blocking and escape behavior.
-
-The active implementation can be changed at runtime:
-
-- **Green:** Rigidbody Physics
-- **Orange:** Simulated Physics
-
-The comparison scene also displays contextual prompts and expandable runtime information about the active controller.
+Both implementations use the shared `LocomotionState` model for grounded, movement, and jump-state information. The handlers coordinate state transitions and animation rather than placing all behavior in the controller classes.
 
 ## Controls
 
-| Action | Keyboard | Gamepad |
+| Action | Keyboard / Mouse | Gamepad |
 |---|---|---|
-| Move | A / D | Left Stick |
-| Jump | Space | South Button |
-| Switch Physics | Tab | Select |
+| Move horizontally | A / D | Left stick left/right or D-pad left/right |
+| Look up while grounded | W | Right stick up |
+| Jump | Space | South face button |
+| Switch active player | Tab | North face button (Triangle on PlayStation) |
+| Attack animation and rumble | Left mouse button | West face button (Square on PlayStation) |
 | Pause | Escape | Start |
 
-## Project Structure
+The left stick's vertical axis is ignored for horizontal locomotion. Its horizontal axis must reach the configurable **Horizontal Stick Movement Threshold** on `GameInput` (default `0.35`). LookUp is independent from movement and uses the separate `Look` action. Attack currently plays an animation and requests a short rumble pulse; hit detection and combat are not implemented.
 
-| Area | Purpose |
-|---|---|
-| `Locomotion/Rigidbody` | Rigidbody-based controller and supporting modules |
-| `Locomotion/Spline` | Transform-driven simulated controller and collision handling |
-| `Locomotion/Core` | Shared locomotion state, camera follow, and demo presentation |
-| `Input` | Input actions, device handling, and gameplay input events |
-| `Editor/Locomotion` | Custom inspectors and editor diagnostics |
-| `Scenes` | Individual demonstrations and the comparison course |
+## Input and controller feedback
 
-## Getting Started
+`GameInput` owns action-map binding, player-action gating, look-up input, attack requests, pause requests, and attack rumble. `DualSenseController` and `DualShockController` expose device selection, common input data, rumble, and supported device-specific output methods. Their custom inspectors contain hardware test controls.
 
-1. Clone or download the repository.
-2. Open the project in Unity Editor `6000.5.4f1`.
-3. Allow Unity to resolve the required packages.
-4. Open `LocomotionComparisonDemo`.
-5. Enter Play Mode.
+The low-level DualSense output-report implementation targets the USB HID format. Advanced feedback support depends on Unity's device layout, operating system, connection method, and hardware. The project does not claim PS5 development-kit integration or console certification readiness. See [PlayStation Controller Components](Documentation/PlayStationControllers.md) for setup and transport limitations.
 
-The project uses Unity's Input System, 2D Physics, and 2D SpriteShape packages.
+## Documentation
 
-## Portfolio Purpose
+- [Locomotion demos and controls](Documentation/Locomotion/LocomotionDemos.md)
+- [Simulated-translate locomotion](Documentation/Locomotion/SimulatedSplineLocomotion.md)
+- [PlayStation controller components](Documentation/PlayStationControllers.md)
+- [Code style and canonical templates](Documentation/CodeStyle/README.md)
+- [Controller refactor migration record](Documentation/PlayerController-Refactor-Migration.md)
+- [Review round — 26 October 2026](Documentation/CodeReview/ReviewRound-2026-10-27.md)
+- [Third-party notices](THIRD-PARTY-NOTICES.md)
 
-UnityLocomotionLab is a standalone technical portfolio project demonstrating my approach to gameplay programming:
+## Validation scope
 
-- Modular and maintainable architecture
-- Clear separation of responsibilities
-- Responsive player movement
-- Defensive collision and slope handling
-- Editor-facing diagnostics
-- Iterative gameplay testing
-
-It is currently presented as a technical showcase rather than a finished Asset Store package or production-ready drop-in controller.
-
-## Planned Development
-
-Future updates may include:
-
-- Additional locomotion experiments and movement models
-- More edge-case and stress-test scenarios
-- Expanded debugging and visualization tools
-- Further controller tuning and code refinement
-- Additional documentation and demonstration media
-
-## Author
-
-**Ali AlHubail**  
-Unity Gameplay & Game Systems Programmer
-
-[GitHub Profile](https://github.com/SpaceTimeDream)
-
-## License
-
-No open-source license has currently been assigned. This repository is shared for portfolio and reference purposes.
+The repository review includes static source inspection, serialized scene/prefab reference checks, and documentation consistency checks. Those checks do not substitute for opening the project in Unity, compiling, running the traversal course in Play Mode, or testing controller output on physical hardware. Record those validation results separately.

@@ -1,7 +1,10 @@
 using System;
+using System.Collections;
+using Portfolio.Character;
 using Portfolio.Game;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.DualShock;
 
 namespace Portfolio.Input
 {
@@ -29,6 +32,8 @@ namespace Portfolio.Input
         public const string MOUSE = "Mouse";
         public const string KEYBOARD = "Keyboard";
         public const string GAMEPAD = "Gamepad";
+        public const string DUALSENSE = "DualSense";
+        public const string DUALSHOCK = "DualShock";
 
         [Header("COMPONENTS")]
         [SerializeField] private InputActionAsset _inputActions;
@@ -36,16 +41,32 @@ namespace Portfolio.Input
         [Header("INPUT HANDLER")]
         [SerializeField] private bool _usePlayerActionGate = true;
         [SerializeField] private bool _updateCursorForCurrentDevice;
+        [SerializeField, Range(0f, 1f)] private float _lookUpInputThreshold = 0.5f;
+
+        [Header("MOVEMENT INPUT")]
+        [Tooltip("Minimum left-stick horizontal input required to move. Vertical stick input is ignored for horizontal movement.")]
+        [SerializeField, Range(0f, 1f)] private float _horizontalStickMovementThreshold = 0.35f;
+
+        [Header("ATTACK FEEDBACK")]
+        [SerializeField] private bool _rumbleOnAttack = true;
+        [SerializeField, Range(0f, 1f)] private float _attackLowFrequencyRumble = 0.25f;
+        [SerializeField, Range(0f, 1f)] private float _attackHighFrequencyRumble = 0.7f;
+        [SerializeField, Min(0.01f)] private float _attackRumbleDuration = 0.18f;
 
         private static GameInput _instance;
         private InputActionMap _gameplayMap;
         private InputActionMap _systemMap;
         private InputAction _moveAction;
+        private InputAction _lookAction;
         private InputAction _jumpAction;
         private InputAction _switchPhysicsAction;
+        private InputAction _attackAction;
         private InputAction _pauseAction;
         private Vector2 _movementValue;
         private string _device = KEYBOARD;
+        private CharacterAnimationController2D _activeCharacterAnimation;
+        private Coroutine _attackRumbleCoroutine;
+        private Gamepad _attackRumbleGamepad;
 
         public static GameInput Instance => _instance;
         public InputActionAsset InputActions => _inputActions;
@@ -67,6 +88,9 @@ namespace Portfolio.Input
         public delegate void SwitchPhysicsDelegate(InputAction.CallbackContext context);
         public SwitchPhysicsDelegate switchPhysicsEvent;
 
+        public delegate void AttackDelegate(InputAction.CallbackContext context);
+        public AttackDelegate attackEvent;
+
         public delegate void PauseDelegate(InputAction.CallbackContext context);
         public PauseDelegate pauseEvent;
 
@@ -74,6 +98,7 @@ namespace Portfolio.Input
         public event Action JumpPressed;
         public event Action JumpReleased;
         public event Action PhysicsSwitchRequested;
+        public event Action AttackRequested;
         public event Action PauseRequested;
 
         #endregion
@@ -165,7 +190,6 @@ namespace Portfolio.Input
             }
 
             InitializeModules();
-            InitializeComponents();
 
             if (!ValidateInputActions())
             {
@@ -190,13 +214,11 @@ namespace Portfolio.Input
             _gameplayMap = _inputActions.FindActionMap("Gameplay", false);
             _systemMap = _inputActions.FindActionMap("System", false);
             _moveAction = _gameplayMap?.FindAction("Move", false);
+            _lookAction = _gameplayMap?.FindAction("Look", false);
             _jumpAction = _gameplayMap?.FindAction("Jump", false);
             _switchPhysicsAction = _gameplayMap?.FindAction("SwitchPhysics", false);
+            _attackAction = _gameplayMap?.FindAction("Attack", false);
             _pauseAction = _systemMap?.FindAction("Pause", false);
-        }
-
-        private void InitializeComponents()
-        {
         }
 
         private void InitializeEvents()
@@ -273,6 +295,21 @@ namespace Portfolio.Input
             }
         }
 
+        public void BindPlayerAttackAction(bool value)
+        {
+            if (_attackAction == null)
+            {
+                return;
+            }
+
+            _attackAction.started -= AttackStartedHandler;
+
+            if (value)
+            {
+                _attackAction.started += AttackStartedHandler;
+            }
+        }
+
         public void BindGamePauseAction(bool value)
         {
             if (_pauseAction == null)
@@ -293,6 +330,7 @@ namespace Portfolio.Input
             BindPlayerMoveAction(value);
             BindPlayerJumpAction(value);
             BindPhysicsSwitchAction(value);
+            BindPlayerAttackAction(value);
             _gameControlsBound = value;
         }
 
@@ -305,6 +343,8 @@ namespace Portfolio.Input
         public void DisableControls()
         {
             PublishMovement(Vector2.zero, true);
+            ResetLookUpInput();
+            StopAttackRumble();
             _gameplayMap?.Disable();
             _systemMap?.Disable();
             Debugging();
@@ -320,6 +360,8 @@ namespace Portfolio.Input
         public void EnableSystemControls()
         {
             PublishMovement(Vector2.zero, true);
+            ResetLookUpInput();
+            StopAttackRumble();
             _gameplayMap?.Disable();
             _systemMap?.Enable();
             Debugging();
@@ -336,7 +378,9 @@ namespace Portfolio.Input
             JumpPressed = null;
             JumpReleased = null;
             PhysicsSwitchRequested = null;
+            AttackRequested = null;
             PauseRequested = null;
+            attackEvent = null;
         }
 
         public string GetCurrentDevice()
@@ -347,6 +391,7 @@ namespace Portfolio.Input
         private void UpdateLoop()
         {
             Debugging();
+            UpdateHeldLookUp();
 
             if (_updateCursorForCurrentDevice)
             {
@@ -386,16 +431,18 @@ namespace Portfolio.Input
                 _gameplayMap != null &&
                 _systemMap != null &&
                 _moveAction != null &&
+                _lookAction != null &&
                 _jumpAction != null &&
                 _switchPhysicsAction != null &&
+                _attackAction != null &&
                 _pauseAction != null)
             {
                 return true;
             }
 
             Debug.LogError(
-                "GameInput requires Gameplay/Move, Gameplay/Jump, " +
-                "Gameplay/SwitchPhysics and System/Pause actions.",
+                "GameInput requires Gameplay/Move, Gameplay/Look, Gameplay/Jump, " +
+                "Gameplay/SwitchPhysics, Gameplay/Attack and System/Pause actions.",
                 this);
             return false;
         }
@@ -425,7 +472,17 @@ namespace Portfolio.Input
         {
             InputDevice device = context.control?.device;
 
-            if (device is Gamepad)
+            if (device is DualSenseGamepadHID || DeviceMatchesName(device, DUALSENSE))
+            {
+                _device = DUALSENSE;
+            }
+            else if (device is DualShockGamepad ||
+                     device is DualShock4GamepadHID ||
+                     DeviceMatchesName(device, DUALSHOCK))
+            {
+                _device = DUALSHOCK;
+            }
+            else if (device is Gamepad)
             {
                 _device = GAMEPAD;
             }
@@ -443,11 +500,146 @@ namespace Portfolio.Input
             }
         }
 
+        private bool DeviceMatchesName(InputDevice device, string deviceName)
+        {
+            if (device == null)
+            {
+                return false;
+            }
+
+            string product = device.description.product ?? string.Empty;
+            string displayName = device.displayName ?? string.Empty;
+            return product.IndexOf(deviceName, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                displayName.IndexOf(deviceName, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         private void UpdateCursor()
         {
             bool pointerDevice = _device == MOUSE || _device == KEYBOARD;
             Cursor.visible = pointerDevice;
             Cursor.lockState = pointerDevice ? CursorLockMode.None : CursorLockMode.Locked;
+        }
+
+        private void UpdateHeldLookUp()
+        {
+            bool upHeld = ShouldProcessPlayerAction() &&
+                _lookAction != null &&
+                _lookAction.ReadValue<Vector2>().y > _lookUpInputThreshold;
+
+            if (_activeCharacterAnimation != null &&
+                (!_activeCharacterAnimation.isActiveAndEnabled ||
+                 !_activeCharacterAnimation.gameObject.activeInHierarchy))
+            {
+                _activeCharacterAnimation.SetLookUpInputHeld(false);
+                _activeCharacterAnimation = null;
+            }
+
+            if (_activeCharacterAnimation == null && !upHeld)
+            {
+                return;
+            }
+
+            if (_activeCharacterAnimation == null && upHeld)
+            {
+                _activeCharacterAnimation = FindFirstObjectByType<CharacterAnimationController2D>();
+            }
+
+            _activeCharacterAnimation?.SetLookUpInputHeld(upHeld);
+        }
+
+        private void ResetLookUpInput()
+        {
+            _activeCharacterAnimation?.SetLookUpInputHeld(false);
+            _activeCharacterAnimation = null;
+        }
+
+        private CharacterAnimationController2D GetActiveCharacterAnimation()
+        {
+            if (_activeCharacterAnimation != null &&
+                _activeCharacterAnimation.isActiveAndEnabled &&
+                _activeCharacterAnimation.gameObject.activeInHierarchy)
+            {
+                return _activeCharacterAnimation;
+            }
+
+            CharacterAnimationController2D nextAnimation =
+                FindFirstObjectByType<CharacterAnimationController2D>();
+
+            if (_activeCharacterAnimation != nextAnimation)
+            {
+                _activeCharacterAnimation?.SetLookUpInputHeld(false);
+                _activeCharacterAnimation = nextAnimation;
+            }
+
+            return _activeCharacterAnimation;
+        }
+
+        private void PlayAttackRumble(Gamepad sourceGamepad)
+        {
+            if (!_rumbleOnAttack)
+            {
+                return;
+            }
+
+            Gamepad gamepad = sourceGamepad != null && sourceGamepad.added
+                ? sourceGamepad
+                : Gamepad.current;
+
+            if (gamepad == null || !gamepad.added)
+            {
+                foreach (Gamepad candidate in Gamepad.all)
+                {
+                    if (candidate != null && candidate.added && candidate.enabled)
+                    {
+                        gamepad = candidate;
+                        break;
+                    }
+                }
+            }
+
+            if (gamepad == null || !gamepad.added || !gamepad.enabled)
+            {
+                return;
+            }
+
+            StopAttackRumble();
+            _attackRumbleGamepad = gamepad;
+            _attackRumbleGamepad.SetMotorSpeeds(
+                _attackLowFrequencyRumble,
+                _attackHighFrequencyRumble);
+            _attackRumbleCoroutine = StartCoroutine(StopAttackRumbleAfterDelay(gamepad));
+        }
+
+        private IEnumerator StopAttackRumbleAfterDelay(Gamepad gamepad)
+        {
+            yield return new WaitForSecondsRealtime(_attackRumbleDuration);
+
+            if (gamepad != null && gamepad.added)
+            {
+                gamepad.SetMotorSpeeds(0f, 0f);
+            }
+
+            if (_attackRumbleGamepad == gamepad)
+            {
+                _attackRumbleGamepad = null;
+                _attackRumbleCoroutine = null;
+            }
+        }
+
+        private void StopAttackRumble()
+        {
+            if (_attackRumbleCoroutine != null)
+            {
+                StopCoroutine(_attackRumbleCoroutine);
+                _attackRumbleCoroutine = null;
+            }
+
+            if (_attackRumbleGamepad != null && _attackRumbleGamepad.added)
+            {
+                _attackRumbleGamepad.SetMotorSpeeds(0f, 0f);
+            }
+
+            _attackRumbleGamepad = null;
         }
 
         private void MovePerformedHandler(InputAction.CallbackContext context)
@@ -460,8 +652,32 @@ namespace Portfolio.Input
                 return;
             }
 
-            PublishMovement(context.ReadValue<Vector2>());
+            PublishMovement(ReadMovementValue(context));
             moveEvent?.Invoke(context);
+        }
+
+        private Vector2 ReadMovementValue(InputAction.CallbackContext context)
+        {
+            Vector2 movementValue = context.ReadValue<Vector2>();
+
+            if (!IsLeftStickInput(context.control))
+            {
+                return movementValue;
+            }
+
+            float horizontalInput = Mathf.Abs(movementValue.x) >= _horizontalStickMovementThreshold
+                ? movementValue.x
+                : 0f;
+
+            // The left stick controls horizontal locomotion only. Its vertical axis is ignored.
+            return new Vector2(horizontalInput, 0f);
+        }
+
+        private bool IsLeftStickInput(InputControl control)
+        {
+            return control != null &&
+                control.device is Gamepad &&
+                control.path.IndexOf("/leftStick", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void MoveCanceledHandler(InputAction.CallbackContext context)
@@ -507,6 +723,21 @@ namespace Portfolio.Input
 
             switchPhysicsEvent?.Invoke(context);
             PhysicsSwitchRequested?.Invoke();
+        }
+
+        private void AttackStartedHandler(InputAction.CallbackContext context)
+        {
+            SetCurrentDevice(context);
+
+            if (!ShouldProcessPlayerAction())
+            {
+                return;
+            }
+
+            attackEvent?.Invoke(context);
+            AttackRequested?.Invoke();
+            GetActiveCharacterAnimation()?.Attack();
+            PlayAttackRumble(context.control?.device as Gamepad);
         }
 
         private void PauseStartedHandler(InputAction.CallbackContext context)

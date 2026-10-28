@@ -18,21 +18,28 @@ Gravity is calculated by the controller and added to its internal velocity. Jump
 
 ## Collision resolution
 
-Before translation, `SimulatedCollisionResolver2D` casts the full capsule through the complete intended fixed-step displacement. It stops at the earliest collision skin, removes only velocity directed into the contact normal and preserves valid tangential motion.
+Before translation, `PlayerSimulatedCollisionResolver` casts the full capsule through the complete intended fixed-step displacement. It stops at the earliest collision skin, removes only velocity directed into the contact normal and preserves valid tangential motion.
 
 Grounded movement stops at non-walkable slopes instead of projecting movement up them. Airborne motion can continue along walls or walkable landing surfaces. The resolver does not apply the old accumulated push-back behavior.
 
 ## Surface detection
 
-`SplineGroundProbe2D` checks current Rigidbody contacts first and uses a short capsule cast as the fallback ground probe. Walkable and steep surfaces use the same angle thresholds as the rest of the locomotion family.
+`PlayerSimulatedGroundProbe` checks current Rigidbody contacts first and uses a short capsule cast as the fallback ground probe. Walkable and steep surfaces use the same angle thresholds as the rest of the locomotion family.
 
 The SpriteShape still authors the demo terrain and its collider. Its sampled spline is no longer the authority for player position or grounded distance.
 
 ## Demo controls
 
-- Move: existing Gameplay/Move binding.
-- Jump: existing Gameplay/Jump binding.
-- Pause: existing System/Pause binding.
+The simulated player uses the shared `GameInput` bindings:
+
+- Move horizontally: `A` / `D`, left stick left/right, or D-pad left/right.
+- Look up while grounded: `W` or right stick up.
+- Jump: `Space` or gamepad south face button.
+- Switch active player: `Tab` or gamepad north face button (Triangle on PlayStation).
+- Attack animation and rumble: left mouse button or gamepad west face button (Square on PlayStation).
+- Pause: `Escape` or gamepad Start.
+
+The left stick's vertical axis is ignored for locomotion. Its horizontal axis uses the configurable `GameInput` **Horizontal Stick Movement Threshold** (default `0.35`). Attack is visual and haptic feedback only; combat behavior is not implemented.
 
 ## Demo assets
 

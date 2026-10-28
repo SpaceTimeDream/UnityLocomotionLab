@@ -6,13 +6,9 @@ namespace Portfolio.Locomotion.Spline.Path
     [Serializable]
     public struct SplinePathSample2D
     {
-        //------------------------------- Game Pause -------------------------------//
-
-        //------------------------------- Debugging Methods -------------------------------//
-
         //------------------------------- Parameters -------------------------------//
 
-        #region Components
+        #region Data
         [SerializeField] private float _distance;
         [SerializeField] private Vector2 _position;
         [SerializeField] private Vector2 _tangent;
@@ -21,7 +17,9 @@ namespace Portfolio.Locomotion.Spline.Path
         [SerializeField] private int _segmentIndex;
         [SerializeField] private float _segmentT;
 
-        // Properties
+        #endregion
+
+        #region Properties
         public float Distance => _distance;
         public Vector2 Position => _position;
         public Vector2 Tangent => _tangent;
@@ -29,22 +27,6 @@ namespace Portfolio.Locomotion.Spline.Path
         public float SlopeAngle => _slopeAngle;
         public int SegmentIndex => _segmentIndex;
         public float SegmentT => _segmentT;
-
-        #endregion
-
-        #region Flags
-
-        #endregion
-
-        //------------------------------- Unity Methods -------------------------------//
-
-        #region Unity
-
-        #endregion
-
-        //------------------------------- Initialization Methods -------------------------------//
-
-        #region Initialization
 
         #endregion
 
@@ -65,8 +47,5 @@ namespace Portfolio.Locomotion.Spline.Path
             _segmentIndex = segmentIndex;
             _segmentT = segmentT;
         }
-#if UNITY_EDITOR
-        //------------------------------- Editor -------------------------------//
-#endif
     }
 }

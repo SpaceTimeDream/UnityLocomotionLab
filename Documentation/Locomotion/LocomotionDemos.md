@@ -1,46 +1,58 @@
 # Locomotion Demos
 
-The project contains two focused movement showcases and one shared comparison scene.
+This branch contains one comparison scene with two player locomotion implementations.
 
-## Rigidbody2D
+## Scene
 
-`RigidbodyLocomotionDemo` uses a dynamic `Rigidbody2D`, a capsule collider and the modular movement, jump, slope, steep-slope, external-force and moving-platform code. Unity velocity and gravity drive its movement.
+Open `Assets/Portfolio/Scenes/LocomotionComparisonDemo.unity` in Unity `6000.5.4f1`.
 
-## Simulated translate
+The scene contains both implementations on an 80-unit test course. The green player uses Rigidbody locomotion; the orange player uses simulated-translate locomotion. Switch the active player during Play Mode to compare their behavior at the same point in the course.
 
-`SimulatedSplineLocomotionDemo` uses the same controller/module flow with an internally calculated velocity. Movement is committed through `Transform.Translate`, while a kinematic `Rigidbody2D` and `CapsuleCollider2D` provide contacts, surface normals and predictive collision shape information. Rigidbody velocity and gravity do not drive the player.
+## Rigidbody2D player
 
-The simulated movement module includes explicit ground, slope and air deceleration. Ground snapping is resolved separately from locomotion so a downward support check cannot be projected into downhill drift. Its collision resolver stops grounded motion at steep surfaces without an accumulating push-back.
+The Rigidbody implementation uses a dynamic `Rigidbody2D`, a capsule collider, and separate controller, handler, movement, jump, and physics components. Unity velocity and gravity drive the player's movement. Its modules cover slopes, steep-slope blocking, external forces, and moving platforms.
 
-## Comparison scene
+## Simulated-translate player
 
-`LocomotionComparisonDemo` contains both implementations on one 80-unit test course. The green player uses Rigidbody locomotion and the orange player uses simulated translate locomotion.
+The simulated implementation uses a kinematic `Rigidbody2D` and a capsule collider for contacts and casts, but movement is driven by an internally calculated velocity and committed through `Transform.Translate`. Rigidbody velocity and gravity do not drive the player.
 
-The `SwitchPhysics` action switches the active implementation at the current collider-foot position. The Game view presents controls in a dedicated left panel, a color-coded test prompt in a separate responsive banner and a collapsible physics summary on the right. A world-space label above the active player identifies the current physics model.
+The movement module separates ground and air acceleration/deceleration. Ground snapping and collision resolution are handled separately from movement to prevent the support probe from introducing downhill drift. Steep slopes block movement into the surface without a recurring separation push.
 
-The collapsed physics summary shows the active model, surface, jump state and velocity. Expanding it adds the motion method, collision method, surface normal, input and complete locomotion flags.
+## Test course
 
 The course includes:
 
-- A long acceleration and braking runway
-- Gentle uphill and downhill slopes with a resting test
-- A crest and valley
-- An uphill jump-momentum test
-- A cyan low-ceiling jump test
-- A yellow jumpable step
-- Steep uphill and downhill transitions at the far end
+- A long acceleration and braking runway.
+- Gentle uphill and downhill slopes, a crest, and a valley.
+- An uphill jump-momentum test.
+- A low-ceiling jump test.
+- A jumpable step.
+- Steep uphill and downhill transitions.
 
-Selecting the simulated player draws its capsule, velocity, intended movement, resolved movement, surface normal, steep-slope probe and collision contacts. The comparison switcher draws labeled course-section gizmos.
+The simulated-player debug gizmos show its capsule, velocity, intended and resolved movement, surface normal, steep-slope probe, and collision contacts. The comparison switcher marks the course sections and labels the active physics model.
 
-The orthographic camera follows only the active player's world position. Player rotation and the `0` / `180` Y-axis facing flip do not affect the camera.
-
-## Open the demos
-
-The finished scenes and player prefabs are committed with the project. Open a scene directly in Unity `6000.5.4f1`; no generation step is required.
+The orthographic camera follows the active player's world position. Player rotation and the Y-axis facing flip do not affect the camera.
 
 ## Controls
 
-- Move: `A` / `D` or gamepad left stick
-- Jump: `Space` or gamepad south button
-- Switch physics: `Tab` or gamepad select
-- Pause: `Escape` or gamepad start
+| Action | Keyboard / Mouse | Generic Gamepad | DualSense / DualShock |
+|---|---|---|---|
+| Move horizontally | A / D | Left stick left/right or D-pad left/right | Left stick left/right or D-pad left/right |
+| Look up while grounded | W | Right stick up | Right stick up |
+| Jump | Space | South Button | X |
+| Switch active player | Tab | North Button | Triangle |
+| Attack animation and rumble | Left mouse button | West Button | Square |
+| Pause | Escape | Start Button | Options / Start |
+
+The left stick controls horizontal movement from its X axis only. Vertical left-stick input is ignored, and horizontal input must reach the configurable **Horizontal Stick Movement Threshold** on `GameInput` (default `0.35`). Keyboard and D-pad bindings remain separate from that analog-stick threshold.
+
+The Play Mode control guide follows the most recently used input device: keyboard and mouse, generic Gamepad, DualSense, or DualShock. It uses generic face-button names for unrecognized gamepads and PlayStation labels for recognized DualSense/DualShock devices. Circle is currently not bound to an action in the input-actions asset.
+
+Attack currently triggers the animation and a short rumble pulse only. Damage, hit detection, and combat behavior are not implemented.
+
+## Prefabs and related documentation
+
+- `Assets/Portfolio/Prefabs/Locomotion/RigidbodyPlayerCapsule.prefab`
+- `Assets/Portfolio/Prefabs/Locomotion/SimulatedPlayerCapsule.prefab`
+- [Simulated locomotion details](SimulatedSplineLocomotion.md)
+- [PlayStation controller integration](../PlayStationControllers.md)

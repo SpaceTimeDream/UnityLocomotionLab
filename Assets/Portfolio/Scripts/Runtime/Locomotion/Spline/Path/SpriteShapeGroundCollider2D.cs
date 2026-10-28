@@ -7,10 +7,6 @@ namespace Portfolio.Locomotion.Spline.Path
     [RequireComponent(typeof(EdgeCollider2D))]
     public class SpriteShapeGroundCollider2D : MonoBehaviour
     {
-        //------------------------------- Game Pause -------------------------------//
-
-        //------------------------------- Debugging Methods -------------------------------//
-
         //------------------------------- Parameters -------------------------------//
 
         #region Components
@@ -18,14 +14,17 @@ namespace Portfolio.Locomotion.Spline.Path
         [SerializeField] private EdgeCollider2D _edgeCollider;
         [SerializeField, Min(2)] private int _maximumSamples = 512;
 
-        private Vector2[] _points;
-
-        // Properties
-        public EdgeCollider2D EdgeCollider => _edgeCollider;
-
         #endregion
 
         #region Flags
+
+        private Vector2[] _points;
+
+        #endregion
+
+        #region Properties
+
+        public EdgeCollider2D EdgeCollider => _edgeCollider;
 
         #endregion
 
@@ -46,8 +45,6 @@ namespace Portfolio.Locomotion.Spline.Path
         private void Initialize()
         {
             InitializeComponents();
-            InitializeModules();
-            InitializeEvents();
             RefreshCollider();
         }
 
@@ -62,14 +59,6 @@ namespace Portfolio.Locomotion.Spline.Path
             {
                 _edgeCollider = GetComponent<EdgeCollider2D>();
             }
-        }
-
-        private void InitializeModules()
-        {
-        }
-
-        private void InitializeEvents()
-        {
         }
 
         #endregion

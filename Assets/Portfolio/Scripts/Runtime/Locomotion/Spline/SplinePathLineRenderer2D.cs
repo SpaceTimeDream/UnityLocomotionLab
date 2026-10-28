@@ -6,10 +6,6 @@ namespace Portfolio.Locomotion.Spline
     [ExecuteAlways]
     public class SplinePathLineRenderer2D : MonoBehaviour
     {
-        //------------------------------- Game Pause -------------------------------//
-
-        //------------------------------- Debugging Methods -------------------------------//
-
         //------------------------------- Parameters -------------------------------//
 
         #region Components
@@ -17,11 +13,11 @@ namespace Portfolio.Locomotion.Spline
         [SerializeField] private LineRenderer _lineRenderer;
         [SerializeField] private int _maximumSamples = 512;
 
-        private Vector3[] _positions;
-
         #endregion
 
         #region Flags
+
+        private Vector3[] _positions;
 
         #endregion
 
@@ -43,7 +39,6 @@ namespace Portfolio.Locomotion.Spline
         {
             InitializeComponents();
             InitializeModules();
-            InitializeEvents();
             RefreshLine();
         }
 
@@ -63,10 +58,6 @@ namespace Portfolio.Locomotion.Spline
         private void InitializeModules()
         {
             EnsurePositionBuffer();
-        }
-
-        private void InitializeEvents()
-        {
         }
 
         #endregion

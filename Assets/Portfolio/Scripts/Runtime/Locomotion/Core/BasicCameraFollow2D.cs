@@ -4,10 +4,6 @@ namespace Portfolio.Locomotion.Core
 {
     public class BasicCameraFollow2D : MonoBehaviour
     {
-        //------------------------------- Game Pause -------------------------------//
-
-        //------------------------------- Debugging Methods -------------------------------//
-
         //------------------------------- Parameters -------------------------------//
 
         #region Components
@@ -22,11 +18,11 @@ namespace Portfolio.Locomotion.Core
 
         private Transform _cachedTransform;
 
-        public Transform Target => _target;
-
         #endregion
 
-        #region Flags
+        #region Properties
+
+        public Transform Target => _target;
 
         #endregion
 
@@ -52,23 +48,13 @@ namespace Portfolio.Locomotion.Core
 
         private void Initialize()
         {
-            InitializeModules();
             InitializeComponents();
-            InitializeEvents();
             SnapToTarget();
-        }
-
-        private void InitializeModules()
-        {
         }
 
         private void InitializeComponents()
         {
             _cachedTransform = transform;
-        }
-
-        private void InitializeEvents()
-        {
         }
 
         #endregion

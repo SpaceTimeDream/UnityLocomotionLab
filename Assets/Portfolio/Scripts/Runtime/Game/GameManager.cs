@@ -5,20 +5,31 @@ namespace Portfolio.Game
 {
     public class GameManager : MonoBehaviour
     {
-        // Fields
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
+
         private static GameManager _instance;
-
         private GameState _currentState = GameState.Normal;
-        private bool _initialized;
 
-        // Properties
         public static GameManager Instance => _instance;
         public GameState CurrentState => _currentState;
         public bool IsPaused => _currentState == GameState.Paused;
 
         public static event Action<GameState> GameStateChanged;
 
-        // Unity Methods
+        #endregion
+
+        #region Flags
+
+        private bool _initialized;
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState()
         {
@@ -46,8 +57,6 @@ namespace Portfolio.Game
 
         private void OnDestroy()
         {
-            CleanupEvents();
-
             if (_instance != this)
             {
                 return;
@@ -58,7 +67,30 @@ namespace Portfolio.Game
             GameStateChanged = null;
         }
 
-        // Public Methods
+        #endregion
+
+        //------------------------------- Initialization Methods -------------------------------//
+
+        #region Initialization
+
+        private void Initialize()
+        {
+            if (_initialized || _instance != this)
+            {
+                return;
+            }
+
+            _currentState = GameState.Normal;
+            ApplyTimeScale();
+            _initialized = true;
+        }
+
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
+
+        #region Game State
+
         public void SetState(GameState state)
         {
             if (_currentState == state)
@@ -81,41 +113,11 @@ namespace Portfolio.Game
             SetPaused(!IsPaused);
         }
 
-        // Private Methods
-        private void Initialize()
-        {
-            if (_initialized || _instance != this)
-            {
-                return;
-            }
-
-            InitializeComponents();
-            InitializeModules();
-            InitializeEvents();
-            _currentState = GameState.Normal;
-            ApplyTimeScale();
-            _initialized = true;
-        }
-
-        private void InitializeComponents()
-        {
-        }
-
-        private void InitializeModules()
-        {
-        }
-
-        private void InitializeEvents()
-        {
-        }
-
         private void ApplyTimeScale()
         {
             Time.timeScale = IsPaused ? 0f : 1f;
         }
 
-        private void CleanupEvents()
-        {
-        }
+        #endregion
     }
 }

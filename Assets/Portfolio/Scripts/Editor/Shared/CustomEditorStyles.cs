@@ -8,7 +8,10 @@ namespace Portfolio.Editor.Shared
     [InitializeOnLoad]
     public static class CustomEditorStyles
     {
-        // Fields
+        //------------------------------- Parameters -------------------------------//
+
+        #region Components
+
         private static readonly Dictionary<Color, Texture2D> _backgroundTextures = new Dictionary<Color, Texture2D>();
 
         private static GUIStyle _largeHeaderStyle;
@@ -36,40 +39,116 @@ namespace Portfolio.Editor.Shared
         private static GUIContent _resetIconContent;
         private static GUIContent _visibilityIconContent;
 
-        // Properties
-        public static GUIStyle LargeHeaderStyle => _largeHeaderStyle ??= CreateHeaderStyle(18);
-        public static GUIStyle MediumHeaderStyle => _mediumHeaderStyle ??= CreateHeaderStyle(14);
-        public static GUIStyle SmallHeaderStyle => _smallHeaderStyle ??= CreateHeaderStyle(12);
-        public static GUIStyle SectionHeaderStyle => _sectionHeaderStyle ??= CreateSectionHeaderStyle();
-        public static GUIStyle FoldoutStyle => _foldoutStyle ??= CreateFoldoutStyle();
-        public static GUIStyle StandardButtonStyle => _standardButtonStyle ??= new GUIStyle(GUI.skin.button) { fixedHeight = 24f };
-        public static GUIStyle CompactButtonStyle => _compactButtonStyle ??= new GUIStyle(GUI.skin.button) { fixedHeight = 20f, padding = new RectOffset(6, 6, 2, 2) };
-        public static GUIStyle MiniButtonStyle => _miniButtonStyle ??= new GUIStyle(EditorStyles.miniButton);
-        public static GUIStyle ToggleButtonStyle => _toggleButtonStyle ??= new GUIStyle(EditorStyles.toolbarButton);
-        public static GUIStyle SmallIconButtonStyle => _smallIconButtonStyle ??= CreateIconButtonStyle(22f);
-        public static GUIStyle MiniIconButtonStyle => _miniIconButtonStyle ??= CreateIconButtonStyle(18f);
-        public static GUIStyle HelpBoxStyle => _helpBoxStyle ??= new GUIStyle(EditorStyles.helpBox) { wordWrap = true };
-        public static GUIStyle PrimaryGroupBackgroundStyle => _primaryGroupBackgroundStyle ??= CreateGroupBackgroundStyle(new Color(0.22f, 0.22f, 0.22f, 0.35f));
-        public static GUIStyle SecondaryGroupBackgroundStyle => _secondaryGroupBackgroundStyle ??= CreateGroupBackgroundStyle(new Color(0.16f, 0.16f, 0.16f, 0.35f));
-        public static GUIStyle BannerStyle => _bannerStyle ??= CreateBannerStyle();
-        public static GUIStyle ErrorLabelStyle => _errorLabelStyle ??= new GUIStyle(EditorStyles.boldLabel) { normal = { textColor = new Color(1f, 0.35f, 0.35f) }, wordWrap = true };
-        public static GUIStyle OverlayLabelStyle => _overlayLabelStyle ??= CreateOverlayLabelStyle();
-        public static GUIStyle OverlayBackgroundStyle => _overlayBackgroundStyle ??= CreateGroupBackgroundStyle(new Color(0f, 0f, 0f, 0.65f));
+        #endregion
 
-        public static GUIContent AddIconContent => _addIconContent ??= CreateIconContent("Toolbar Plus", "+", "Add");
-        public static GUIContent DeleteIconContent => _deleteIconContent ??= CreateIconContent("TreeEditor.Trash", "-", "Delete");
-        public static GUIContent DuplicateIconContent => _duplicateIconContent ??= CreateIconContent("TreeEditor.Duplicate", "D", "Duplicate");
-        public static GUIContent ResetIconContent => _resetIconContent ??= CreateIconContent("Refresh", "R", "Reset");
-        public static GUIContent VisibilityIconContent => _visibilityIconContent ??= CreateIconContent("animationvisibilitytoggleon", "V", "Visibility");
+        #region Properties
 
-        // Unity Methods
+        public static GUIStyle LargeHeaderStyle =>
+            _largeHeaderStyle ??= CreateHeaderStyle(18);
+
+        public static GUIStyle MediumHeaderStyle =>
+            _mediumHeaderStyle ??= CreateHeaderStyle(14);
+
+        public static GUIStyle SmallHeaderStyle =>
+            _smallHeaderStyle ??= CreateHeaderStyle(12);
+
+        public static GUIStyle SectionHeaderStyle =>
+            _sectionHeaderStyle ??= CreateSectionHeaderStyle();
+
+        public static GUIStyle FoldoutStyle =>
+            _foldoutStyle ??= CreateFoldoutStyle();
+
+        public static GUIStyle StandardButtonStyle =>
+            _standardButtonStyle ??= new GUIStyle(GUI.skin.button)
+            {
+                fixedHeight = 24f
+            };
+
+        public static GUIStyle CompactButtonStyle =>
+            _compactButtonStyle ??= new GUIStyle(GUI.skin.button)
+            {
+                fixedHeight = 20f,
+                padding = new RectOffset(6, 6, 2, 2)
+            };
+
+        public static GUIStyle MiniButtonStyle =>
+            _miniButtonStyle ??= new GUIStyle(EditorStyles.miniButton);
+
+        public static GUIStyle ToggleButtonStyle =>
+            _toggleButtonStyle ??= new GUIStyle(EditorStyles.toolbarButton);
+
+        public static GUIStyle SmallIconButtonStyle =>
+            _smallIconButtonStyle ??= CreateIconButtonStyle(22f);
+
+        public static GUIStyle MiniIconButtonStyle =>
+            _miniIconButtonStyle ??= CreateIconButtonStyle(18f);
+
+        public static GUIStyle HelpBoxStyle =>
+            _helpBoxStyle ??= new GUIStyle(EditorStyles.helpBox)
+            {
+                wordWrap = true
+            };
+
+        public static GUIStyle PrimaryGroupBackgroundStyle =>
+            _primaryGroupBackgroundStyle ??= CreateGroupBackgroundStyle(
+                new Color(0.22f, 0.22f, 0.22f, 0.35f));
+
+        public static GUIStyle SecondaryGroupBackgroundStyle =>
+            _secondaryGroupBackgroundStyle ??= CreateGroupBackgroundStyle(
+                new Color(0.16f, 0.16f, 0.16f, 0.35f));
+
+        public static GUIStyle BannerStyle =>
+            _bannerStyle ??= CreateBannerStyle();
+
+        public static GUIStyle ErrorLabelStyle =>
+            _errorLabelStyle ??= new GUIStyle(EditorStyles.boldLabel)
+            {
+                normal = { textColor = new Color(1f, 0.35f, 0.35f) },
+                wordWrap = true
+            };
+
+        public static GUIStyle OverlayLabelStyle =>
+            _overlayLabelStyle ??= CreateOverlayLabelStyle();
+
+        public static GUIStyle OverlayBackgroundStyle =>
+            _overlayBackgroundStyle ??= CreateGroupBackgroundStyle(
+                new Color(0f, 0f, 0f, 0.65f));
+
+        public static GUIContent AddIconContent =>
+            _addIconContent ??= CreateIconContent("Toolbar Plus", "+", "Add");
+
+        public static GUIContent DeleteIconContent =>
+            _deleteIconContent ??= CreateIconContent("TreeEditor.Trash", "-", "Delete");
+
+        public static GUIContent DuplicateIconContent =>
+            _duplicateIconContent ??= CreateIconContent("TreeEditor.Duplicate", "D", "Duplicate");
+
+        public static GUIContent ResetIconContent =>
+            _resetIconContent ??= CreateIconContent("Refresh", "R", "Reset");
+
+        public static GUIContent VisibilityIconContent =>
+            _visibilityIconContent ??= CreateIconContent(
+                "animationvisibilitytoggleon",
+                "V",
+                "Visibility");
+
+        #endregion
+
+        //------------------------------- Unity Methods -------------------------------//
+
+        #region Unity
         static CustomEditorStyles()
         {
             AssemblyReloadEvents.beforeAssemblyReload += Reset;
             EditorApplication.quitting += Reset;
         }
 
-        // Private Methods
+        #endregion
+
+        //------------------------------- Core / Routines Methods -------------------------------//
+
+        #region Styles
+
         internal static void Refresh()
         {
             Reset();
@@ -173,6 +252,12 @@ namespace Portfolio.Editor.Shared
             return texture;
         }
 
+        #endregion
+
+        //------------------------------- Helpers -------------------------------//
+
+        #region Helpers
+
         private static void Reset()
         {
             _largeHeaderStyle = null;
@@ -209,6 +294,8 @@ namespace Portfolio.Editor.Shared
 
             _backgroundTextures.Clear();
         }
+
+        #endregion
     }
 }
 #endif
