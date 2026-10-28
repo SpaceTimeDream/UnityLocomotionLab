@@ -4,7 +4,9 @@
 
 ## Scope and validation status
 
-This rectifies the existing Code-Overhaul split, rather than proposing a fresh architecture. The repository's Rigidbody locomotion implementation is separated into PlayerRigidbodyController, PlayerRigidbodyHandler, PlayerRigidbodyPhysics, PlayerRigidbodyMovement, PlayerRigidbodyJump, and the static PlayerRigidbodyStatus model.
+This document records the controller refactor work initiated during the Code-Overhaul effort; it is a historical migration record rather than a proposal for a fresh architecture. The Rigidbody locomotion implementation was separated into PlayerRigidbodyController, PlayerRigidbodyHandler, PlayerRigidbodyPhysics, PlayerRigidbodyMovement, PlayerRigidbodyJump, and the static PlayerRigidbodyStatus model.
+
+Repository source and serialized YAML have been inspected and structurally checked. A Unity Editor compile/play-mode run has **not** been performed, so this report does not claim Unity runtime validation.
 
 Repository source and serialized YAML have been inspected and structurally checked. A Unity Editor compile/play-mode run has **not** been performed, so this report does not claim Unity runtime validation.
 
@@ -129,7 +131,7 @@ The deleted RigidbodyJump members were moved in the same spirit: request/release
 
 ## Saved scene/prefab migration (historical)
 
-At the time of the refactor, the old Rigidbody controller serialization was migrated in the assets listed below. The standalone `RigidbodyLocomotionDemo.unity` scene mentioned in the original migration notes is not present on the current `Code-Overhaul` branch; the maintained demo is `Assets/Portfolio/Scenes/LocomotionComparisonDemo.unity`.
+At the time of the refactor, the old Rigidbody controller serialization was migrated in the assets listed below. The standalone `RigidbodyLocomotionDemo.unity` scene mentioned in the original migration notes is not present in the current repository; the maintained demo is `Assets/Portfolio/Scenes/LocomotionComparisonDemo.unity`.
 
 | Asset | Historical migration |
 |---|---|
