@@ -1,7 +1,6 @@
 #if UNITY_EDITOR
-using System.Collections.Generic;
 using Portfolio.Editor.Shared;
-using Portfolio.Locomotion.Rigidbody;
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
